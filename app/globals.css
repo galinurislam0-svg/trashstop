@@ -1,0 +1,353 @@
+@import "tailwindcss" source(none);
+@source "../app";
+@source "../components";
+@source "../lib";
+
+/* ───────── TrashSTOP · «Қызыл → Таза» дизайн жүйесі (DESIGN.md) ───────── */
+@theme {
+  --color-salt: #f2f1ed;
+  --color-salt-2: #e8e7e1;
+  --color-ink: #0e0e0d;
+  --color-ink-2: #171715;
+  --color-ink-3: #22221f;
+  --color-muted: #5c5b55;
+  --color-qyzyl: #e2231a;
+  --color-qyzyl-2: #b81a13;
+  --color-clean: #1e7a4c;
+  --color-line: rgba(15, 15, 14, 0.12);
+  --color-line-d: rgba(242, 241, 237, 0.1);
+  --color-mist: #a3a29b;
+  --font-sans: var(--font-onest), system-ui, sans-serif;
+  --font-display: var(--font-oswald), var(--font-onest), sans-serif;
+  --font-mono: var(--font-jet), ui-monospace, monospace;
+  --ease-sweep: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+  color-scheme: dark;
+  --gutter: clamp(16px, 2vw, 28px);
+  --t-mega: clamp(4.5rem, 1rem + 15vw, 17rem);
+  --t-xl: clamp(2.5rem, 1.4rem + 4.8vw, 6rem);
+  --t-l: clamp(1.6rem, 1.2rem + 1.8vw, 2.75rem);
+  --t-m: clamp(1.2rem, 1.05rem + 0.6vw, 1.55rem);
+}
+
+html,
+body {
+  background: var(--color-ink);
+  color: #e9e8e3;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  font-feature-settings: "kern";
+}
+
+::selection {
+  background: var(--color-qyzyl);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-qyzyl);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.light-page {
+  color-scheme: light;
+  background: var(--color-salt);
+  color: var(--color-ink);
+}
+
+.display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-weight: 600;
+  line-height: 0.86;
+  letter-spacing: -0.015em;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* Басқару беттерінің панелі: қатты, жіңішке сызықпен (glass жоқ) */
+.glass {
+  background: rgba(23, 23, 21, 0.94);
+  border: 1px solid var(--color-line-d);
+  box-shadow: 0 20px 60px -30px rgba(0, 0, 0, 0.8);
+}
+.glass-light {
+  background: rgba(242, 241, 237, 0.94);
+  border: 1px solid var(--color-line);
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(242, 241, 237, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(242, 241, 237, 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: rgba(163, 162, 155, 0.3);
+  border-radius: 99px;
+}
+
+/* ── Sweep: бір қозғалыс тілі ── */
+
+/* Primary CTA: фон солдан оңға сыпырылып толады */
+.sweep-btn {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition: color 0.45s var(--ease-sweep);
+}
+.sweep-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--sweep, var(--color-qyzyl));
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 0.55s var(--ease-sweep);
+}
+@media (hover: hover) {
+  .sweep-btn:hover::before {
+    clip-path: inset(0 0 0 0);
+  }
+  .sweep-btn:hover {
+    color: var(--sweep-ink, #fff);
+  }
+}
+.sweep-btn:focus-visible::before {
+  clip-path: inset(0 0 0 0);
+}
+.sweep-btn:focus-visible {
+  color: var(--sweep-ink, #fff);
+}
+.sweep-btn:active {
+  scale: 0.98;
+}
+
+/* Nav / inline: астыңғы сызық сыпырылып сызылады */
+.sweep-line {
+  background: linear-gradient(currentColor 0 0) left bottom / 0% 1.5px no-repeat;
+  transition: background-size 0.5s var(--ease-sweep);
+}
+@media (hover: hover) {
+  .sweep-line:hover {
+    background-size: 100% 1.5px;
+  }
+}
+.sweep-line:focus-visible,
+.sweep-line[aria-current="page"] {
+  background-size: 100% 1.5px;
+}
+
+/* Тізім жолы: қызыл маркер сол жақтан кіреді */
+.sweep-row {
+  position: relative;
+}
+.sweep-row::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-qyzyl);
+  transform-origin: top;
+  scale: 1 0;
+  transition: scale 0.45s var(--ease-sweep);
+}
+@media (hover: hover) {
+  .sweep-row:hover::after {
+    scale: 1 1;
+  }
+}
+.sweep-row:focus-visible::after,
+.sweep-row[data-active="true"]::after {
+  scale: 1 1;
+}
+
+/* ЖИ сканерлеу сызығы — ол да сыпыру: солдан оңға */
+@keyframes scan-x {
+  0% { left: -10%; }
+  100% { left: 110%; }
+}
+.scanline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #fff;
+  box-shadow: 0 0 30px 8px rgba(226, 35, 26, 0.6);
+  animation: scan-x 1.6s var(--ease-sweep) infinite;
+}
+
+@keyframes ping-ring {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.ping-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  animation: ping-ring 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.shimmer-text {
+  color: var(--color-qyzyl);
+}
+
+/* Бет ауысу пердесі */
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--color-qyzyl);
+  clip-path: inset(0 100% 0 0);
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-attrib {
+  font-size: 10px !important;
+  opacity: 0.6;
+}
+.maplibregl-ctrl-bottom-right {
+  z-index: 1 !important;
+}
+
+.skip-link {
+  position: fixed;
+  left: 12px;
+  top: -60px;
+  z-index: 200;
+  background: var(--color-qyzyl);
+  color: #fff;
+  padding: 10px 14px;
+  font-weight: 600;
+  transition: top 0.3s var(--ease-sweep);
+}
+.skip-link:focus {
+  top: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .sweep-btn:hover {
+    text-decoration: underline;
+  }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  html, body { background: #fff !important; color: #000 !important; }
+}
+
+/* ── Карта: popup және басқару батырмалары ── */
+.ts-popup .maplibregl-popup-content {
+  background: #0e0e0d;
+  color: #f2f1ed;
+  border-radius: 4px;
+  padding: 8px 10px;
+  box-shadow: 0 12px 30px -12px rgba(0, 0, 0, 0.6);
+  font-family: var(--font-sans);
+  max-width: 240px;
+}
+.ts-popup .maplibregl-popup-tip {
+  border-top-color: #0e0e0d !important;
+  border-bottom-color: #0e0e0d !important;
+}
+.ts-popup-t {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.ts-popup-s {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #a3a29b;
+  font-family: var(--font-mono);
+}
+.maplibregl-ctrl-group {
+  border-radius: 4px !important;
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.5) !important;
+}
+.maplibregl-ctrl-scale {
+  border-color: currentColor !important;
+  font-family: var(--font-mono);
+  font-size: 10px !important;
+  background: rgba(242, 241, 237, 0.8) !important;
+}
+
+/* Телефон рамкасы ішінде fixed элементтер рамкаға бекітіледі */
+.phone-screen {
+  transform: translateZ(0);
+}
+.phone-screen .min-h-dvh {
+  min-height: 100%;
+}
+.ctrl-offset .maplibregl-ctrl-top-right {
+  top: 84px;
+  right: 6px;
+}
+
+.ts-basemap { left: 10px; bottom: 30px; }
+.ctrl-offset .ts-basemap { left: auto; right: 10px; bottom: 30px; }
+@media (min-width: 1024px) {
+  .ctrl-offset .ts-basemap { right: 14px; bottom: 60px; }
+}
+.ctrl-offset .ts-basemap { top: 236px; bottom: auto; right: 10px; left: auto; }
+/* Телефонда: тақырып (2–3 қатар) астында және төменгі мәзір/демо панелінің үстінде */
+@media (max-width: 1023px) {
+  .ctrl-offset .maplibregl-ctrl-top-right { top: 196px; }
+  .ctrl-offset .ts-basemap { top: auto; bottom: 150px; }
+}
+
+/* Бригада көлігі маркері */
+.ts-veh {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+}
+.ts-veh span {
+  background: #0e0e0d;
+  color: #f2f1ed;
+  font: 600 10px/1 var(--font-sans);
+  padding: 3px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.ts-truck span { background: #1e7a4c; }
+
+/* ── Арнайы мүмкіндіктер ── */
+html[data-fs="1"] .a11y-zoom { zoom: 1.14; }
+html[data-fs="2"] .a11y-zoom { zoom: 1.28; }
+html[data-contrast] .light-page,
+html[data-contrast] .light-page * { text-shadow: none; }
+html[data-contrast] .light-page :is(.text-muted, .text-stone-400, .text-stone-500, .text-stone-600, [class*="text-black/"]) { color: #000 !important; }
+html[data-contrast] .light-page :is(.border-line, .border-stone-100, .border-stone-200) { border-color: #000 !important; }
+html[data-contrast] .light-page { background: #fff !important; }
+html[data-contrast] :is(.bg-ink, .bg-ink-2, .glass) :is(.text-mist, .text-stone-300, .text-stone-400, .text-stone-500) { color: #fff !important; }
+html[data-contrast] .glass { background: #000 !important; border-color: #fff !important; }
+html[data-contrast] a:focus-visible, html[data-contrast] button:focus-visible { outline: 3px solid #ffd400 !important; }
