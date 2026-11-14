@@ -387,8 +387,11 @@ export async function weeklySummary(facts: string, lang: Lang = "kk"): Promise<s
 import { createHash } from "node:crypto";
 import { pool, ready } from "./db";
 const cache = new Map<string, unknown>();
+// Кэш нұсқасы: модель/нұсқаулық өзгергенде ескі жауаптар қолданылмауы үшін ауыстырамыз
+const CACHE_VER = "claude-1";
 function key(...parts: (string | null | undefined)[]) {
   const h = createHash("sha1");
+  h.update(CACHE_VER);
   for (const p of parts) h.update(p ?? "-");
   return h.digest("hex");
 }
