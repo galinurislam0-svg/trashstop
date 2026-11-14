@@ -496,7 +496,7 @@ function Rollout() {
       <div className="mt-4 grid grid-cols-3 gap-2 text-center">
         {[
           { v: "0 ₸", l: "жабдыққа" },
-          { v: "< 1 ₸", l: "ЖИ, бір фото" },
+          { v: "≈ 15–20 ₸", l: "ЖИ, бір фото" },
           { v: "≈ 15 мың ₸", l: "сервер, айына" },
         ].map((x) => (
           <div key={x.l} className="rounded-[4px] bg-white/[0.04] p-2.5">
