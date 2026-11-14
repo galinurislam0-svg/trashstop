@@ -75,16 +75,16 @@ export default function WorkerPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const target = useRef<Report | null>(null);
 
-  useEffect(() => {
-    getGeo(4000).then((g) => {
-      if (inCity(g)) {
-        setGeoMode("gps");
-        setMyPos(g);
-      }
-    });
-  }, []);
-
   const me = useMe();
+  // Нақты тазалықшы — әрқашан нақты GPS. Демо жүргізуші (әкімдік/оператор) — әдепкі «Орнында»,
+  // әйтпесе қорғау залынан түсірілген фото шағым нүктесінен алыс деп есептеліп, растаудан өтпейді.
+  useEffect(() => {
+    if (!me) return;
+    getGeo(4000).then((g) => {
+      if (inCity(g)) setMyPos(g);
+      if (me.role === "worker") setGeoMode("gps");
+    });
+  }, [me]);
   const isWorker = me?.role === "worker";
   useEffect(() => {
     if (me?.role === "worker" && me.workerId) setWorkerId(me.workerId);
