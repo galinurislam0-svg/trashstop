@@ -55,6 +55,7 @@ const VerifySchema = z.object({
 
 const TreeSchema = z.object({
   is_tree: z.boolean(),
+  species: z.string(),
   health: z.enum(["good", "weak", "dry"]),
   confidence: z.number(),
   dormant: z.boolean(),
@@ -65,6 +66,7 @@ const TreeSchema = z.object({
 
 export type TreeAi = {
   is_tree: boolean;
+  species: string;
   health: "good" | "weak" | "dry";
   confidence: number;
   dormant: boolean;
@@ -91,6 +93,7 @@ ${cold ? `- ҚАЗІР СУЫҚ МАУСЫМ (қазан–наурыз). Жап
 - Қылқан жапырақтылар (қарағай, шырша, арша) жыл бойы жасыл: қоңыр-сары қылқан — әлсіздік немесе қурау.
 
 3) health: good — сау; weak — әлсіз (бір бөлігі құрғаған, жапырағы сирек/сарғайған өсу маусымында, зақымданған); dry — толық қураған (тірі бұтақ, бүршік, жасыл жапырақ мүлде жоқ, қабығы түскен).
+3½) species — ағаш түрі қазақша (мыс. «Қарағаш», «Тал», «Терек», «Үйеңкі», «Айлант», «Қарағай»); сенімсіз болса — «Белгісіз ағаш».
 4) signs — фотода нақты көрінген 2–5 белгі (мыс. «қабығы түскен», «жоғарғы бұтақтары құрғақ», «жапырағы қалың, жасыл»).
 5) action — бір ұсыныс: none (күтім қажет емес), water (суару), prune (санитарлық кесу), clean (айналасын тазалау), replant (қайта отырғызу), treat (зиянкестен өңдеу), inspect (жақыннан қайта тексеру).
 6) confidence — 0..1, шын сенімділігің. Тек сырт пішінінен анықтау қиын болса — 0,6-дан төмен қой.
@@ -375,7 +378,7 @@ async function treeHealthRaw(photo: string, lang: Lang = "kk"): Promise<TreeAi> 
     }
   }
   // ЖИ қолжетімсіз: күйді ойдан шығармаймыз — маман өзі белгілейді
-  return { is_tree: true, health: "good", confidence: 0, dormant: false, signs: [], action: "inspect", comment: "", demo: true };
+  return { is_tree: true, species: "", health: "good", confidence: 0, dormant: false, signs: [], action: "inspect", comment: "", demo: true };
 }
 
 export async function weeklySummary(facts: string, lang: Lang = "kk"): Promise<string> {
@@ -418,7 +421,7 @@ import { createHash } from "node:crypto";
 import { pool, ready } from "./db";
 const cache = new Map<string, unknown>();
 // Кэш нұсқасы: модель/нұсқаулық өзгергенде ескі жауаптар қолданылмауы үшін ауыстырамыз
-const CACHE_VER = "claude-1";
+const CACHE_VER = "claude-2";
 function key(...parts: (string | null | undefined)[]) {
   const h = createHash("sha1");
   h.update(CACHE_VER);

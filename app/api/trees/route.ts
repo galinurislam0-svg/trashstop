@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { AuthError, requireRole } from "@/lib/auth";
-import { mutate, planCare, updateTree, waterZone } from "@/lib/store";
+import { addTree, mutate, planCare, updateTree, waterZone } from "@/lib/store";
 import type { CareKind } from "@/lib/meta";
 import type { TreeHealth } from "@/lib/types";
 
@@ -12,11 +12,16 @@ export async function POST(req: Request) {
     const a = e as AuthError;
     return NextResponse.json({ error: a.message }, { status: a.status });
   }
-  const body = (await req.json().catch(() => ({}))) as { action?: string; zone?: string; id?: string; health?: TreeHealth; note?: string; kind?: CareKind; days?: number };
+  const body = (await req.json().catch(() => ({}))) as { action?: string; zone?: string; id?: string; health?: TreeHealth; note?: string; kind?: CareKind; days?: number; lat?: number; lng?: number; species?: string };
   try {
     if (body.action === "health") {
       if (!body.id || !["good", "weak", "dry"].includes(body.health ?? "")) return NextResponse.json({ error: "Дерек қате" }, { status: 400 });
       return NextResponse.json({ ok: true, tree: await mutate(() => updateTree(body.id!, body.health!, body.note)) });
+    }
+    if (body.action === "add") {
+      const lat = Number(body.lat), lng = Number(body.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || !["good", "weak", "dry"].includes(body.health ?? "")) return NextResponse.json({ error: "Дерек қате" }, { status: 400 });
+      return NextResponse.json({ ok: true, tree: await mutate(() => addTree({ lat, lng, species: body.species, health: body.health!, note: body.note })) });
     }
     if (body.action === "care") {
       if (!body.id || !body.kind) return NextResponse.json({ error: "Дерек қате" }, { status: 400 });

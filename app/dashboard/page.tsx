@@ -22,18 +22,18 @@ export default function DashboardPage() {
     if (!state) return null;
     const now = state.now;
     const trees = state.trees;
-    const zones = new Map<string, { name: string; dry: number; weak: number; total: number; sumDays: number; auto: boolean }>();
+    const zones = new Map<string, { name: string; dry: number; weak: number; total: number; sumDays: number; known: number; auto: boolean }>();
     for (const t of trees) {
-      const z = zones.get(t.zone) ?? { name: t.zone, dry: 0, weak: 0, total: 0, sumDays: 0, auto: t.autoIrrigation };
+      const z = zones.get(t.zone) ?? { name: t.zone, dry: 0, weak: 0, total: 0, sumDays: 0, known: 0, auto: t.autoIrrigation };
       z.total++;
       if (t.health === "dry") z.dry++;
       if (t.health === "weak") z.weak++;
-      z.sumDays += (now - t.lastWatered) / 864e5;
+      if (t.lastWatered > 0) (z.sumDays += (now - t.lastWatered) / 864e5), z.known++;
       zones.set(t.zone, z);
     }
     const list = [...zones.values()]
       .map((z) => {
-        const daysDry = Math.round(z.sumDays / z.total); // аймақтағы ағаштардың орташа суарылмаған күні
+        const daysDry = z.known ? Math.round(z.sumDays / z.known) : 0; // аймақтағы ағаштардың орташа суарылмаған күні
         return { ...z, daysDry, need: z.dry * 2 + z.weak + daysDry * 2 };
       })
       .sort((a, b) => b.need - a.need)

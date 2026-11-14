@@ -273,6 +273,33 @@ export function thankWorker(workerId: string, stars: number) {
   return w;
 }
 
+/** Картада жоқ ағашты тіркеу (фото + GPS бойынша). Аймақ, күтетін мердігер, суару — ең жақын ағаштан */
+export function addTree(input: { lat: number; lng: number; species?: string; health: TreeHealth; note?: string }) {
+  const s = getState();
+  if (!(input.lat > 44.78 && input.lat < 44.92 && input.lng > 65.4 && input.lng < 65.62)) throw new Error("Орын Қызылорда шегінен тыс");
+  const nearest = [...s.trees].sort((a, b) => distanceM(a, input) - distanceM(b, input))[0];
+  const near = nearest && distanceM(nearest, input) < 600 ? nearest : null; // алыс ағаштан мәлімет көшірмейміз
+  const max = s.trees.reduce((m, t) => Math.max(m, Number(t.id.slice(1)) || 0), 0);
+  const now = Date.now();
+  const t = {
+    id: `t${max + 1}`,
+    lat: input.lat,
+    lng: input.lng,
+    species: (input.species || "").trim().slice(0, 40) || "Белгісіз ағаш",
+    planted: 0, // белгісіз
+    health: input.health,
+    lastWatered: near?.lastWatered ?? 0, // 0 — белгісіз
+    zone: near ? near.zone : "Жаңа тіркелген нүкте",
+    contractor: near?.contractor ?? "Белгісіз",
+    autoIrrigation: near?.autoIrrigation ?? false,
+    checkedAt: now,
+    checkNote: (input.note || "").slice(0, 200) || undefined,
+  };
+  s.trees.push(t);
+  persist();
+  return t;
+}
+
 /** Көгалдандыру маманы ағаштың жағдайын тіркейді */
 export function updateTree(id: string, health: TreeHealth, note?: string) {
   const s = getState();

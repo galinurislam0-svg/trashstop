@@ -5,7 +5,7 @@ import { Droplets, ThermometerSun, Sprout, Camera, Loader2, Truck, CloudRain, Sn
 import { Rail } from "@/components/Rail";
 import { Logo } from "@/components/Logo";
 import { TestDataBadge } from "@/components/ui";
-import { compressImage, post, useCity, useHeaderBottom } from "@/lib/client";
+import { compressImage, getBestGeo, inCity, post, readExifGps, useCity, useHeaderBottom } from "@/lib/client";
 import { CARE_KINDS, HEALTH, distanceM, kzWeekday, type CareKind } from "@/lib/meta";
 import type { Tree, TreeHealth } from "@/lib/types";
 import type { TreeAi } from "@/lib/ai";
@@ -91,9 +91,10 @@ export default function GreenPage() {
       .map(([name, ts]) => {
         const lat = ts.reduce((a, t) => a + t.lat, 0) / ts.length;
         const lng = ts.reduce((a, t) => a + t.lng, 0) / ts.length;
-        const last = ts.reduce((a, t) => a + t.lastWatered, 0) / ts.length;
+        const known = ts.filter((t) => t.lastWatered > 0); // суару күні белгісіз ағаштар есепке кірмейді
+        const last = known.length ? known.reduce((a, t) => a + t.lastWatered, 0) / known.length : Date.now();
         const weak = ts.filter((t) => t.health !== "good").length;
-        return { name, lat, lng, count: ts.length, weak, last, auto: ts[0].autoIrrigation, dist: distanceM(depot, { lat, lng }) };
+        return { name, lat, lng, count: ts.length, weak, last, lastKnown: known.length > 0, auto: ts[0].autoIrrigation, dist: distanceM(depot, { lat, lng }) };
       })
       .sort((a, b) => Number(a.auto) - Number(b.auto) || b.weak / b.count - a.weak / a.count);
   }, [trees]);
@@ -104,20 +105,68 @@ export default function GreenPage() {
     () =>
       trees
         .filter((t) => filter === "all" || t.health === filter)
-        .map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, color: HEALTH[t.health].color, size: t.health === "dry" ? 4.2 : 3.4, weight: t.health === "good" ? 0 : 1, label: `${t.species} · ${HEALTH[t.health].label}`, sub: `${t.zone} · ${t.planted} ж.` })),
+        .map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, color: HEALTH[t.health].color, size: t.health === "dry" ? 4.2 : 3.4, weight: t.health === "good" ? 0 : 1, label: `${t.species} · ${HEALTH[t.health].label}`, sub: t.planted ? `${t.zone} · ${t.planted} ж.` : t.zone })),
     [trees, filter],
   );
+
+  // Фотодағы ағаш картада қай жерде: фотоның өз координатасы → телефон GPS → ең жақын тіркелген ағаш (25 м)
+  const [match, setMatch] = useState<TreeMatch | null>(null);
+  const [adding, setAdding] = useState(false);
 
   async function onTreePhoto(f?: File) {
     if (!f) return;
     setAiBusy(true);
     setAiRes(null);
+    setMatch(null);
+    const chosen = selTree; // ағаш алдын ала таңдалса — нәтиже соған тиесілі
     try {
-      const photo = await compressImage(f);
-      setAiRes(await post("/api/ai/tree", { photo }));
+      const [photo, exif] = await Promise.all([compressImage(f), readExifGps(f)]);
+      const locating: Promise<TreeLoc | null> = chosen
+        ? Promise.resolve(null)
+        : inCity(exif)
+          ? Promise.resolve({ lat: exif!.lat, lng: exif!.lng, src: "exif" as const })
+          : getBestGeo(6000).then((g) => ("error" in g || !inCity(g) ? null : { lat: g.lat, lng: g.lng, src: "gps" as const, acc: g.acc }));
+      const [res, loc] = await Promise.all([post<TreeAi>("/api/ai/tree", { photo }), locating]);
+      setAiRes(res);
+      if (chosen) return setMatch({ kind: "selected", id: chosen.id });
+      if (!res.is_tree || res.demo) return;
+      if (!loc) return setMatch({ kind: "noloc" });
+      const near = trees.map((t) => ({ t, d: distanceM(t, loc) })).sort((a, b) => a.d - b.d)[0];
+      if (near && near.d <= 25) {
+        setSelTree(near.t);
+        setFocus({ lat: near.t.lat, lng: near.t.lng, zoom: 18, key: Date.now() });
+        setMobileMap(true);
+        setMatch({ kind: "found", id: near.t.id, dist: Math.round(near.d), src: loc.src });
+      } else {
+        setFocus({ lat: loc.lat, lng: loc.lng, zoom: 17, key: Date.now() });
+        setMatch({ kind: "new", loc, dist: near ? Math.round(near.d) : null });
+      }
     } finally {
       setAiBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function addNewTree() {
+    if (!aiRes || match?.kind !== "new") return;
+    setAdding(true);
+    try {
+      const sure = aiRes.confidence >= 0.6;
+      const r = await post<{ tree: Tree }>("/api/trees", {
+        action: "add",
+        lat: match.loc.lat,
+        lng: match.loc.lng,
+        species: aiRes.species,
+        health: sure ? aiRes.health : "good",
+        note: `ЖИ: ${aiRes.comment}${sure ? "" : " (сенімсіз — қайта тексеру керек)"}`,
+      });
+      await refresh();
+      setSelTree(r.tree);
+      setFocus({ lat: r.tree.lat, lng: r.tree.lng, zoom: 18, key: Date.now() });
+      setMobileMap(true);
+      setMatch({ kind: "found", id: r.tree.id, dist: 0, src: match.loc.src, added: true });
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -267,7 +316,7 @@ export default function GreenPage() {
                 >
                   <div className="truncate text-sm font-semibold text-stone-200">{z.name}</div>
                   <div className="text-[11px] text-stone-500">
-                    {z.count} ағаш · {z.weak} әлсіз/қураған · орташа {Math.round((Date.now() - z.last) / 864e5)} күн бұрын суарылған
+                    {z.count} ағаш · {z.weak} әлсіз/қураған · {z.lastKnown ? `орташа ${Math.round((Date.now() - z.last) / 864e5)} күн бұрын суарылған` : "суару күні белгісіз"}
                   </div>
                 </button>
                 <button
@@ -295,7 +344,8 @@ export default function GreenPage() {
             {aiBusy ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />} Ағашты суретке түсіру
           </button>
           <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onTreePhoto(e.target.files?.[0])} />
-          {aiRes && <TreeAiResult r={aiRes} hint={!selTree} />}
+          {aiRes && <TreeAiResult r={aiRes} hint={false} />}
+          {aiRes && match && <TreeMatchInfo m={match} busy={adding} onAdd={addNewTree} />}
         </div>
       </aside>
 
@@ -359,10 +409,10 @@ function TreeCard({ tree, ai, onClose, onSaved }: { tree: Tree; ai: TreeAi | nul
       <div className="mt-1 text-lg font-bold text-white">{tree.species}</div>
       <div className="mt-2 space-y-1 text-xs text-stone-400">
         <div>Аймақ: <span className="text-stone-200">{tree.zone}</span></div>
-        <div>Отырғызылды: <span className="text-stone-200">{tree.planted} ж.</span></div>
+        <div>Отырғызылды: <span className="text-stone-200">{tree.planted ? `${tree.planted} ж.` : "белгісіз"}</span></div>
         <div>Күтетін: <span className="text-stone-200">{tree.contractor}</span></div>
         <div>Суару: <span className="text-stone-200">{tree.autoIrrigation ? "автоматты желі" : "су тасушы көлік"}</span></div>
-        <div>Соңғы суару: <span className="text-stone-200">{Math.round((Date.now() - tree.lastWatered) / 864e5)} күн бұрын</span></div>
+        <div>Соңғы суару: <span className="text-stone-200">{tree.lastWatered > 0 ? `${Math.round((Date.now() - tree.lastWatered) / 864e5)} күн бұрын` : "белгісіз"}</span></div>
         {tree.checkedAt && (
           <div>
             Соңғы тексеру: <span className="text-stone-200">{new Date(tree.checkedAt).toLocaleString("kk-KZ", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
@@ -458,6 +508,7 @@ function TreeAiResult({ r, hint }: { r: TreeAi; hint: boolean }) {
         </span>
         <span className="text-stone-400">{` · сенімділігі ${Math.round(r.confidence * 100)}%`}</span>
       </div>
+      {r.species && r.species !== "Белгісіз ағаш" && <div className="text-[13px] font-semibold text-stone-100">{`🌳 ${r.species}`}</div>}
       {r.dormant && <div className="text-[12px] text-sky-300">❄ Тыныштық маусымы: жапырақсыз болуы — қалыпты</div>}
       {r.signs.length > 0 && (
         <ul className="space-y-0.5 text-[12px] text-stone-300">
@@ -470,6 +521,35 @@ function TreeAiResult({ r, hint }: { r: TreeAi; hint: boolean }) {
       {act && <div className="text-[12px] font-semibold text-[#6fd39c]">{`Ұсыныс: ${act.emoji} ${act.label}`}</div>}
       {r.action === "inspect" && <div className="text-[12px] font-semibold text-amber-300">Ұсыныс: жақыннан қайта тексеру</div>}
       {hint && !unsure && <div className="text-[11px] text-stone-500">Картадан ағашты таңдасаңыз, нәтижені соған сақтауға болады.</div>}
+    </div>
+  );
+}
+
+type TreeLoc = { lat: number; lng: number; src: "exif" | "gps"; acc?: number };
+type TreeMatch =
+  | { kind: "selected"; id: string }
+  | { kind: "found"; id: string; dist: number; src: "exif" | "gps"; added?: boolean }
+  | { kind: "new"; loc: TreeLoc; dist: number | null }
+  | { kind: "noloc" };
+
+/** Фото картадағы қай ағашқа тиесілі */
+function TreeMatchInfo({ m, busy, onAdd }: { m: TreeMatch; busy: boolean; onAdd: () => void }) {
+  const box = "mt-2 rounded-lg p-2.5 text-[13px] leading-snug";
+  if (m.kind === "selected") return <div className={`${box} bg-white/5 text-stone-300`}>{`📍 Нәтиже таңдалған ағашқа тиесілі (#${m.id.slice(1)}). Төмендегі карточкадан сақтаңыз.`}</div>;
+  if (m.kind === "found")
+    return (
+      <div className={`${box} bg-clean/15 text-[#6fd39c]`}>
+        {m.added ? `✓ Жаңа ағаш картаға қосылды (#${m.id.slice(1)}).` : `📍 Картада табылды: ағаш #${m.id.slice(1)} · ${m.dist} м`}
+        <span className="block text-[11px] text-stone-400">{m.src === "exif" ? "Фотоның өз координатасы бойынша" : "Телефонның GPS-і бойынша"}</span>
+      </div>
+    );
+  if (m.kind === "noloc") return <div className={`${box} bg-amber-400/10 text-amber-200`}>Орын анықталмады. Картадан ағашты басып таңдаңыз — нәтижені соған сақтауға болады.</div>;
+  return (
+    <div className={`${box} bg-white/5 text-stone-300`}>
+      {m.dist !== null ? `Бұл жерде (25 м ішінде) тіркелген ағаш жоқ — ең жақыны ${m.dist} м жерде.` : "Бұл жерде тіркелген ағаш жоқ."}
+      <button onClick={onAdd} disabled={busy} className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[4px] bg-clean text-[14px] font-bold text-white hover:brightness-110 disabled:opacity-60">
+        {busy ? <Loader2 size={16} className="animate-spin" /> : <Sprout size={16} />} Картаға жаңа ағаш ретінде қосу
+      </button>
     </div>
   );
 }
