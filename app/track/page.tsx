@@ -67,7 +67,7 @@ export default function TrackPage() {
       <div className="mx-auto max-w-3xl px-[var(--gutter)] py-6">
         <header className="flex items-center justify-between gap-3">
           <Logo light sub="Өтінішті тексеру" />
-          <Link href="/" className="sweep-line inline-flex items-center gap-1.5 text-[15px] font-semibold">
+          <Link href="/" className="sweep-line inline-flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold">
             <ArrowLeft size={16} /> Басты бет
           </Link>
         </header>

@@ -10,7 +10,7 @@ const ITEMS = [
   { href: "/ops", label: "Оператор", icon: Radar, roles: ["operator", "akimat"] },
   { href: "/green", label: "Жасыл қор", icon: Trees, roles: ["green", "akimat"] },
   { href: "/inspector", label: "Инспектор", icon: ShieldAlert, roles: ["inspector", "akimat"] },
-  { href: "/dashboard", label: "Әкімдік", icon: LayoutDashboard, roles: ["akimat"] },
+  { href: "/dashboard", label: "Әкімдік", icon: LayoutDashboard, roles: ["akimat", "operator"] },
 ];
 
 /** Телефонда: төменгі мәзір (бөлімдер + арнайы мүмкіндіктер + шығу) */

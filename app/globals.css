@@ -141,6 +141,17 @@ body {
   background: linear-gradient(currentColor 0 0) left bottom / 0% 1.5px no-repeat;
   transition: background-size 0.5s var(--ease-sweep);
 }
+/* Сенсорлы экранда: сілтеменің басу аймағы үлкейеді, көрінісі өзгермейді */
+@media (pointer: coarse) {
+  .sweep-line {
+    position: relative;
+  }
+  .sweep-line::after {
+    content: "";
+    position: absolute;
+    inset: -12px -8px;
+  }
+}
 @media (hover: hover) {
   .sweep-line:hover {
     background-size: 100% 1.5px;
@@ -303,6 +314,16 @@ body {
 }
 .phone-screen .min-h-dvh {
   min-height: 100%;
+}
+/* Ноутбуктағы қызмет қабығында логотип пен аккаунт жоғарғы жолақта бар — панель ішінде қайталамаймыз */
+.phone-screen .in-frame-hide {
+  display: none;
+}
+.phone-screen .frame-end {
+  justify-content: flex-end;
+}
+.phone-screen .frame-pad {
+  padding-top: 16px;
 }
 .ctrl-offset .maplibregl-ctrl-top-right {
   top: 84px;

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { rateLimited } from "@/lib/ratelimit";
-import { act, mutate, suggestBrigade, sync } from "@/lib/store";
+import { act, getPhoto, mutate, suggestBrigade, sync } from "@/lib/store";
+import { verifyClean } from "@/lib/ai";
+
+export const maxDuration = 60;
 import { AuthError, requireRole, type Role } from "@/lib/auth";
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -44,7 +47,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ error: "Бұл тапсырма сіздің бригадаңызға берілмеген" }, { status: 403 });
     // Бағаны тек шағым иесі қояды
     if (action === "rate" && rep.reporterId !== me.uid) return NextResponse.json({ error: "Тек шағым иесі бағалай алады" }, { status: 403 });
-    const payload = action === "complete" && me.role === "worker" ? { ...body, workerId: me.workerId } : body;
+    let payload = action === "complete" && me.role === "worker" ? { ...body, workerId: me.workerId } : body;
+    if (action === "complete") {
+      // ЖИ тексерісін сервер өзі жасайды: клиент жіберген «таза» белгісіне сенбейміз.
+      // (Тазалықшының қосымшасы дәл осы фотоны жаңа ғана тексерген болса — нәтиже кэштен алынады, қайта сұрау болмайды.)
+      let aiClean: boolean | null = null;
+      if (typeof body.photo === "string" && body.photo.startsWith("data:image/")) {
+        try {
+          const v = await verifyClean(await getPhoto(id, "photo"), body.photo, req.headers.get("x-lang") === "ru" ? "ru" : "kk");
+          aiClean = v.demo ? null : v.clean && v.same_place;
+        } catch {
+          aiClean = null; // ЖИ қолжетімсіз — геоорын мен фото бойынша ғана
+        }
+      }
+      payload = { ...payload, aiClean };
+    }
     const r = await mutate(() => act(id, payload));
     return NextResponse.json({ ok: true, status: r.status, verification: r.verification });
   } catch (e) {

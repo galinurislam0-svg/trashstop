@@ -7,12 +7,13 @@ import Link from "next/link";
 import { ChevronRight, Clock3, FileSearch, ShieldCheck, Smartphone } from "lucide-react";
 import { GovStrip } from "./GovStrip";
 import { Logo } from "./Logo";
-import { UserChip } from "./UserChip";
+import { UserChip, useMe } from "./UserChip";
 import { LEGAL_TERM } from "@/lib/meta";
 
 export function PhoneFrame({ children, title, points, path }: { children: React.ReactNode; title: string; points: string[]; path: string }) {
   const [desk, setDesk] = useState(false);
   const [qr, setQr] = useState("");
+  const demo = useMe()?.role === "akimat"; // төменде демо панелі тұрады — жұмыс панелі оның астында қалмауы керек
   useEffect(() => {
     const mq = matchMedia("(min-width: 1024px)");
     const on = () => setDesk(mq.matches);
@@ -45,7 +46,7 @@ export function PhoneFrame({ children, title, points, path }: { children: React.
         </div>
       </header>
 
-      <div className="mx-auto grid min-h-0 w-full max-w-[1280px] flex-1 grid-cols-12 gap-8 px-8 py-6">
+      <div className={`mx-auto grid min-h-0 w-full max-w-[1280px] flex-1 grid-cols-12 gap-8 px-8 pt-6 ${demo ? "pb-[72px]" : "pb-6"}`}>
         {/* Жұмыс панелі: fixed элементтер (батырмалар, модальдар) осы панельге бекітіледі */}
         <section className="phone-screen relative col-span-7 min-h-0 overflow-hidden rounded-[12px] border border-line bg-salt shadow-[0_20px_50px_-30px_rgba(0,0,0,.35)] xl:col-span-6 xl:col-start-2">
           <div className="h-full overflow-y-auto overflow-x-hidden scroll-thin">{children}</div>

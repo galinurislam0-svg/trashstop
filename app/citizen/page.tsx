@@ -70,6 +70,7 @@ export default function CitizenPage() {
     lookup(g);
   }
   const geoSeq = useRef(0);
+  const noLoc = locInfo.src === "none" || locInfo.src === "locating"; // геонүктесіз өтініш қабылданбайды
 
   // Нүктеден нақты мекенжай: көше + үй нөмірі (соңғы сұраудың жауабы ғана қабылданады)
   async function lookup(p: { lat: number; lng: number }) {
@@ -187,13 +188,17 @@ export default function CitizenPage() {
     <PhoneFrame title="Тұрғын" path="/citizen" points={["Камераны ашып, қоқысты суретке түсіресіз", "ЖИ түрін, көлемін және қауіптілігін анықтайды", "Шағымның жолын бақылап, тазалықшыны бағалайсыз"]}>
     <main id="main" className="a11y-zoom light-page min-h-dvh">
       <div className="mx-auto flex min-h-dvh max-w-md flex-col">
-        <header className="sticky top-0 z-20 flex items-center justify-between bg-salt/90 px-4 py-3 backdrop-blur">
-          <Logo light sub="Тұрғын" />
+        <header className="frame-end sticky top-0 z-20 flex items-center justify-between bg-salt/90 px-4 py-3 backdrop-blur">
+          <span className="in-frame-hide">
+            <Logo light sub="Тұрғын" />
+          </span>
           <div className="flex items-center gap-1.5">
             <div className="flex items-center gap-1.5 rounded-full bg-[#fbfaf7] px-3 py-1.5 text-xs font-bold text-qyzyl shadow-sm">
               <Award size={14} /> {points} ұпай
             </div>
-            <UserChip light compact />
+            <span className="in-frame-hide">
+              <UserChip light compact />
+            </span>
           </div>
         </header>
 
@@ -423,6 +428,7 @@ export default function CitizenPage() {
           )}
 
           {tab === "mine" && <MyReports reports={myReports} now={state?.now ?? Date.now()} onRated={refresh} />}
+          {tab !== "report" && <h1 className="sr-only">{tab === "mine" ? "Менің өтініштерім" : tab === "truck" ? "Қоқыс көлігі қайда" : "Тазалықшыға рақмет айту"}</h1>}
           {tab === "truck" && <TruckWhere />}
           {tab === "thanks" && <ThankWorker workers={state?.workers ?? []} />}
         </div>
@@ -433,10 +439,10 @@ export default function CitizenPage() {
             {tab === "report" && step === "review" ? (
               <button
                 onClick={send}
-                disabled={sending || ai?.needsRetake || (ai?.demo && !catPicked)}
+                disabled={sending || ai?.needsRetake || (ai?.demo && !catPicked) || noLoc}
                 className="flex w-full items-center justify-center gap-2 rounded-[6px] sweep-btn bg-ink py-4 text-base font-bold text-salt transition active:scale-[0.98] disabled:opacity-60"
               >
-                {sending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />} {ai?.demo && !catPicked ? "Алдымен түрін таңдаңыз" : ai?.needsRetake ? "Фотоны қайта түсіріңіз" : "Жіберу"}
+                {sending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />} {ai?.demo && !catPicked ? "Алдымен түрін таңдаңыз" : ai?.needsRetake ? "Фотоны қайта түсіріңіз" : locInfo.src === "locating" ? "Орын анықталуда…" : noLoc ? "Алдымен орынды көрсетіңіз" : "Жіберу"}
               </button>
             ) : (
               <nav className="glass-light grid grid-cols-4 rounded-[6px] p-1.5 shadow-lg">

@@ -158,6 +158,7 @@ export default function DashboardPage() {
     <>
     <Rail />
     <main id="main" className="a11y-zoom lg:ml-[68px] min-h-dvh bg-ink">
+      <h1 className="sr-only print:hidden">Әкімдік: басшы панелі</h1>
       <div className="mx-auto max-w-7xl px-4 pb-[170px] pt-5 sm:px-6 lg:pb-10">
         <header className="no-print flex flex-wrap items-center gap-3">
           <Logo sub="Әкімдік · Басшы панелі" />
@@ -184,7 +185,7 @@ export default function DashboardPage() {
         </header>
 
         <div className="mt-2 hidden print:block">
-          <h1 className="text-2xl font-bold">TrashSTOP: апталық есеп</h1>
+          <h2 className="text-2xl font-bold">TrashSTOP: апталық есеп</h2>
           <div className="text-sm" suppressHydrationWarning>Қызылорда қаласы · {new Date().toLocaleDateString("kk-KZ")} · тестілік деректер</div>
         </div>
 
@@ -324,7 +325,7 @@ export default function DashboardPage() {
                 <span className="flex items-center gap-1.5">
                   <Sprout size={14} className="text-[#6fd39c]" /> Күтімді қажет ететін нысандар · жасыл қор
                 </span>
-                <Link href="/green" className="normal-case tracking-normal text-salt hover:underline">
+                <Link href="/green" className="inline-flex min-h-[40px] items-center normal-case tracking-normal text-salt hover:underline lg:min-h-0">
                   Жасыл қорды ашу →
                 </Link>
               </span>

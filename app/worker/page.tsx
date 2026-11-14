@@ -169,8 +169,8 @@ export default function WorkerPage() {
     >
       <main id="main" className="a11y-zoom light-page min-h-dvh">
         <h1 className="sr-only">Тазалықшының бүгінгі тапсырмалары</h1>
-        <div className="mx-auto max-w-md px-4 pb-10">
-          <header className="flex items-center justify-between gap-2 py-3">
+        <div className="frame-pad mx-auto max-w-md px-4 pb-10">
+          <header className="in-frame-hide flex items-center justify-between gap-2 py-3">
             <Logo light sub="Тазалықшы" />
             <UserChip light compact />
           </header>
@@ -264,9 +264,7 @@ export default function WorkerPage() {
                       >
                         <PhotoBox src={r.photo} category={r.category} className="h-16 w-16 shrink-0 rounded-[10px]" />
                         <span className="min-w-0 flex-1">
-                          <span className="block text-[17px] font-extrabold text-ink">
-                            {CATEGORY[r.category].emoji} {CATEGORY[r.category].short}
-                          </span>
+                          <span className="block text-[17px] font-extrabold text-ink">{r.source === "plan" ? r.description.split(":")[0] : `${CATEGORY[r.category].emoji} ${CATEGORY[r.category].short}`}</span>
                           <span className="block truncate text-[15px] font-semibold text-stone-600">{r.address}</span>
                           {r.deadline && <span className={`block text-[14px] font-bold ${over ? "text-qyzyl" : "text-stone-500"}`}>{timeLeft(r.deadline, now)}</span>}
                         </span>
@@ -404,7 +402,9 @@ function CurrentTask({
   const over = isOverdue(r, now);
   const step = r.status === "assigned" ? 0 : 1; // 0: жолға шығу, 1: орында — фото
   const dist = myPos ? distanceM(myPos, r) : null;
-  const say = `${CATEGORY[r.category].label}. ${r.address}. ${r.deadline ? timeLeft(r.deadline, now) : ""}. ${TOOLS[r.category]}.`;
+  // Не істеу керек: жоспарлы күтім тапсырмасында — маманның нұсқауы, әйтпесе ЖИ сипаттамасы немесе тұрғынның сөзі
+  const what = r.source === "plan" ? r.description : r.ai?.summary || (r.description && r.description !== CATEGORY[r.category].label ? r.description : "");
+  const say = `${CATEGORY[r.category].label}. ${what ? what + ". " : ""}${r.address}. ${r.deadline ? timeLeft(r.deadline, now) : ""}. ${TOOLS[r.category]}.`;
   return (
     <section className="mt-5 overflow-hidden rounded-[24px] bg-white shadow-[0_12px_40px_-20px_rgba(0,0,0,.35)]" aria-label="Қазіргі тапсырма">
       {/* қадамдар */}
@@ -434,7 +434,7 @@ function CurrentTask({
         <div className="text-[24px] font-extrabold leading-tight text-ink">
           {CATEGORY[r.category].emoji} {CATEGORY[r.category].label}
         </div>
-        {r.ai?.summary && <div className="text-[16px] leading-snug text-stone-600">{r.ai.summary}</div>}
+        {what && <div className={r.source === "plan" ? "rounded-[12px] bg-clean/10 px-3 py-2.5 text-[19px] font-bold leading-snug text-clean" : "text-[16px] leading-snug text-stone-600"}>{what}</div>}
         <div className="flex items-start gap-2 text-[19px] font-bold leading-snug text-ink">
           <MapPin size={22} className="mt-0.5 shrink-0 text-qyzyl" /> {r.address}
         </div>

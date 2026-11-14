@@ -215,7 +215,7 @@ export default function GreenPage() {
             </div>
             <button
               onClick={() => setSummer((s) => !s)}
-              className={`rounded-md px-2 py-1 text-[11px] font-bold ${summer ? "bg-red-500/20 text-red-300" : "bg-white/5 text-stone-400"}`}
+              className={`min-h-[40px] rounded-md px-2.5 py-1 text-[12px] font-bold lg:min-h-0 lg:px-2 lg:text-[11px] ${summer ? "bg-red-500/20 text-red-300" : "bg-white/5 text-stone-400"}`}
             >
               {summer ? "☀️ Шілде сценарийі" : "Шілде сценарийі"}
             </button>
@@ -274,7 +274,7 @@ export default function GreenPage() {
                     await post("/api/trees", { zone: z.name });
                     refresh();
                   }}
-                  className="rounded-lg bg-sky-500/15 px-2 py-1 text-[11px] font-bold text-sky-300 hover:bg-sky-500/25"
+                  className="min-h-[40px] rounded-lg bg-sky-500/15 px-3 py-1 text-[12px] font-bold text-sky-300 hover:bg-sky-500/25 lg:min-h-0 lg:px-2 lg:text-[11px]"
                 >
                   Суарылды
                 </button>

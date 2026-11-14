@@ -414,7 +414,7 @@ export default function OpsPage() {
               <button
                 key={k}
                 onClick={() => setFilter(k)}
-                className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${filter === k ? "bg-white text-stone-900" : "bg-white/5 text-stone-400 hover:text-white"}`}
+                className={`min-h-[40px] shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition lg:min-h-0 lg:px-2.5 ${filter === k ? "bg-white text-stone-900" : "bg-white/5 text-stone-400 hover:text-white"}`}
               >
                 {l} <span className="opacity-60">{counts[k]}</span>
               </button>
@@ -427,7 +427,7 @@ export default function OpsPage() {
                 <button
                   key={c}
                   onClick={() => setCats((x) => (on ? x.filter((y) => y !== c) : [...x, c]))}
-                  className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold transition ${on ? "bg-white/15 text-white" : "text-stone-500 hover:text-stone-300"}`}
+                  className={`inline-flex min-h-[36px] items-center gap-1 rounded-md px-2.5 py-1 text-[12px] font-semibold transition lg:min-h-0 lg:px-2 lg:text-[11px] ${on ? "bg-white/15 text-white" : "text-stone-500 hover:text-stone-300"}`}
                 >
                   <span className="h-2 w-2 rounded-full" style={{ background: CATEGORY[c].color }} />
                   {CATEGORY[c].short}

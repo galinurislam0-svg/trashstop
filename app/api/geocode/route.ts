@@ -10,6 +10,7 @@ type Addr = { address: string; street: string | null; house: string | null; area
 
 /** Орысша көше түрлерін қазақшаға: «Жаркынбаева улица» → «Жаркынбаева көшесі» */
 function kzStreet(s: string) {
+  if (/^Центральная площадь$/i.test(s)) return "Орталық алаң";
   return s
     .replace(/^улица\s+(.+)$/i, "$1 көшесі")
     .replace(/\s+улица$/i, " көшесі")
