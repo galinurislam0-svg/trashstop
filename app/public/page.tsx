@@ -6,7 +6,9 @@ import dynamic from "next/dynamic";
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 import QRCode from "qrcode";
 import { Logo } from "@/components/Logo";
-import { Avatar, PhotoBox, Stars, TestDataBadge } from "@/components/ui";
+import { CityFeed } from "@/components/CityFeed";
+import { DEMO_CREDITS } from "@/lib/demo-photos";
+import { Avatar, Stars, TestDataBadge } from "@/components/ui";
 import { useCity } from "@/lib/client";
 import { CATEGORY, isOverdue, timeAgo } from "@/lib/meta";
 
@@ -38,7 +40,6 @@ export default function PublicPage() {
         .map((r) => ({ id: r.id, lat: r.lat, lng: r.lng, color: r.status === "done" ? "#1e7a4c" : "#e2231a", size: r.status === "done" ? 3.5 : 5.5, label: CATEGORY[r.category].label, sub: r.status === "done" ? "орындалды" : "ашық" })),
     [reports],
   );
-  const recent = reports.filter((r) => r.status === "done").slice(0, 8);
   const heroes = [...(state?.workers ?? [])].sort((a, b) => b.thanks - a.thanks).slice(0, 8);
   const done7 = reports.filter((r) => r.doneAt && now - r.doneAt < 7 * 864e5).length;
 
@@ -58,6 +59,9 @@ export default function PublicPage() {
               Қала тазалығы <span className="text-qyzyl">ашық</span>.
             </h1>
             <p className="mt-3 max-w-xl text-stone-500">Әр шағым, әр тазаланған жер және оны тазалаған адам, бәрі көрініп тұр. Өткен аптада {done7} жер тазартылды.</p>
+            <a href="#feed" className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-full bg-ink px-5 text-[15px] font-bold text-white hover:bg-ink-2">
+              Қала жаңалығын көру ↓
+            </a>
           </div>
           {qr && (
             <div className="flex items-center gap-4 rounded-3xl bg-[#fbfaf7] p-4 shadow-sm">
@@ -69,7 +73,9 @@ export default function PublicPage() {
           )}
         </section>
 
-        <h2 id="map" className="mt-10 scroll-mt-6 text-lg font-extrabold text-ink">Қала картасы</h2>
+        <CityFeed reports={reports} workers={state?.workers ?? []} now={now} />
+
+        <h2 id="map" className="mt-12 scroll-mt-6 text-lg font-extrabold text-ink">Қала картасы</h2>
         <p className="text-sm text-stone-500">Қызыл — ашық өтініштер, жасыл — орындалғандары. Жеке деректер көрсетілмейді.</p>
         <div className="mt-3 h-[min(60vh,520px)] overflow-hidden rounded-2xl border border-line">
           <MapView theme="light" points={mapPoints} zoom={13} pitch={40} />
@@ -82,22 +88,6 @@ export default function PublicPage() {
               <div className={`text-3xl font-extrabold ${d.index >= 75 ? "text-qyzyl" : d.index >= 50 ? "text-amber-500" : "text-red-500"}`}>{d.index}</div>
               <div className="mt-1 text-sm font-semibold text-stone-700">{d.name}</div>
               <div className="text-xs text-stone-400">{d.open} ашық · {d.done} тазаланды</div>
-            </div>
-          ))}
-        </div>
-
-        <h2 className="mt-10 display text-[26px] text-ink">Соңғы тазаланған жерлер</h2>
-        <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {recent.map((r) => (
-            <div key={r.id} className="overflow-hidden rounded-[6px] bg-[#fbfaf7] shadow-sm">
-              <div className="grid grid-cols-2">
-                <PhotoBox src={r.photo} category={r.category} className="aspect-square w-full" />
-                <PhotoBox src={r.afterPhoto} category={r.category} className="aspect-square w-full" />
-              </div>
-              <div className="p-3">
-                <div className="text-xs font-bold text-qyzyl">✓ {CATEGORY[r.category].short} · {r.district}</div>
-                <div className="text-[11px] text-stone-400">{r.doneAt ? timeAgo(r.doneAt, now) : ""}</div>
-              </div>
             </div>
           ))}
         </div>
@@ -116,6 +106,21 @@ export default function PublicPage() {
             </div>
           ))}
         </div>
+
+        <details className="mt-10 rounded-[12px] bg-white p-4 text-[13px] text-stone-500 shadow-sm">
+          <summary className="cursor-pointer font-semibold text-stone-700">Тестілік фотолардың авторлары мен лицензиялары</summary>
+          <p className="mt-2">Демо деректердегі фотолар Қызылордада түсірілмеген: олар Wikimedia Commons-тан ашық лицензиямен алынған, «дейін» мен «кейін» — әр түрлі жерлер. Нақты пилотта тек тұрғындар мен тазалықшылардың өз фотолары шығады.</p>
+          <ul className="mt-2 space-y-1">
+            {DEMO_CREDITS.map((c) => (
+              <li key={c.file}>
+                <a href={c.url} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">
+                  {c.title}
+                </a>
+                {` · ${c.author} · ${c.license}`}
+              </li>
+            ))}
+          </ul>
+        </details>
 
         <div className="mt-12 rounded-3xl bg-ink p-6 text-center text-white">
           <div className="text-xl font-extrabold">«Олар тазалайды» деп шашпайық 🌈</div>

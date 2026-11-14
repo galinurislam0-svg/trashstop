@@ -13,8 +13,9 @@ export async function GET(req: Request) {
     plate: canSeePlates ? r.plate : r.plate ? "•••" : null,
     reporterId: r.reporterId && r.reporterId === me?.uid ? r.reporterId : null,
     mine: Boolean(me && r.reporterId === me.uid),
-    photo: r.photo ? `/api/photo/${r.id}?k=before&v=${r.timeline.length}` : null,
-    afterPhoto: r.afterPhoto ? `/api/photo/${r.id}?k=after&v=${r.timeline.length}` : null,
+    // /demo/... — тестілік ашық лицензиялы фотолар, тікелей беріледі
+    photo: r.photo ? (r.photo.startsWith("/demo/") ? r.photo : `/api/photo/${r.id}?k=before&v=${r.timeline.length}`) : null,
+    afterPhoto: r.afterPhoto ? (r.afterPhoto.startsWith("/demo/") ? r.afterPhoto : `/api/photo/${r.id}?k=after&v=${r.timeline.length}`) : null,
   }));
   const { users, ...pub } = s;
   void users;

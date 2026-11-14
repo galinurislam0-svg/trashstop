@@ -419,7 +419,7 @@ export async function mutate<T>(fn: () => T): Promise<T> {
 export async function getPhoto(id: string, which: "photo" | "afterPhoto"): Promise<string | null> {
   const s = await sync();
   const v = s.reports.find((r) => r.id === id)?.[which] ?? null;
-  if (!v) return null;
+  if (!v || v.startsWith("/demo/")) return null; // тестілік фото ЖИ салыстыруына берілмейді
   if (v.startsWith("db:") && pool) {
     const r = await pool.query<{ data: string }>("SELECT data FROM ts_photo WHERE key = $1", [v.slice(3)]);
     return r.rows[0]?.data ?? null;

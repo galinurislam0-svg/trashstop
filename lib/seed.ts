@@ -2,6 +2,7 @@
 import type { Brigade, Category, CityState, Report, Source, Tree, Worker } from "./types";
 import { CATEGORY } from "./meta";
 import REAL_ADDR from "./seed-addresses.json";
+import { DEMO_AFTER, DEMO_BEFORE } from "./demo-photos";
 
 // Тестілік нүктелердің нақты мекенжайлары (OpenStreetMap-тен алдын ала алынған). Кездейсоқ тізбек өзгермеуі үшін
 // fallback әрқашан есептеледі, тек нақтысы бар болса — сол қолданылады.
@@ -181,9 +182,16 @@ export function buildSeed(now = Date.now()): CityState {
     Object.assign(rep, { status: "new", brigadeId: null, workerId: null, deadline: null, assignedAt: null, startedAt: null, doneAt: null, verification: null, rating: null });
     rep.timeline = rep.timeline.slice(0, 1);
   }
+  // Тестілік фотолар (Wikimedia Commons): «дейін» — санатына қарай, «кейін» — тек орындалғандарына.
+  // Кездейсоқ тізбекті өзгертпеу үшін нөмірі бойынша таңдаймыз.
+  reports.forEach((rep, i) => {
+    const b = DEMO_BEFORE[rep.category];
+    if (b?.length) rep.photo = b[i % b.length];
+    if (rep.status === "done") rep.afterPhoto = DEMO_AFTER[i % DEMO_AFTER.length];
+  });
   // Жаңалардың бірі — «көрші қоқыс өртеп жатыр» (демода оператор көруі үшін)
   const fresh = reports.slice(0, 5).find((x) => x.category === "household" && !x.plate) ?? reports[2];
-  Object.assign(fresh, { category: "burning", description: DESCRIPTIONS.burning[0], priority: 3, priorityReason: "өрт қаупі, ауа ластануы" });
+  Object.assign(fresh, { category: "burning", description: DESCRIPTIONS.burning[0], priority: 3, priorityReason: "өрт қаупі, ауа ластануы", photo: DEMO_BEFORE.burning[0] });
   // Мерзімі өткендер — тек 3-еуі (шынайы көрініс), қалғандарының мерзімі әлі бар
   const open = reports.filter((x) => x.status === "assigned" || x.status === "in_progress");
   open.forEach((rep, i) => {
