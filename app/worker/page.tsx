@@ -145,7 +145,7 @@ export default function WorkerPage() {
         photo,
         lat: loc?.lat,
         lng: loc?.lng,
-        aiClean: ai ? ai.clean && ai.same_place : null,
+        aiClean: ai ? ai.clean : null,
       });
       setResult({ ok: res.verification?.ok ?? false, v: res.verification, comment: ai?.comment, id: r.id });
       if (res.verification?.ok) setFocusId(null);

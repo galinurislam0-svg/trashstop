@@ -55,7 +55,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (typeof body.photo === "string" && body.photo.startsWith("data:image/")) {
         try {
           const v = await verifyClean(await getPhoto(id, "photo"), body.photo, req.headers.get("x-lang") === "ru" ? "ru" : "kk");
-          aiClean = v.demo ? null : v.clean && v.same_place;
+          // Орынды GPS тексереді; ЖИ тек тазалықты бағалайды (бұрыш өзгерсе «басқа жер» деп қателеспеуі үшін)
+          aiClean = v.demo ? null : v.clean;
         } catch {
           aiClean = null; // ЖИ қолжетімсіз — геоорын мен фото бойынша ғана
         }
