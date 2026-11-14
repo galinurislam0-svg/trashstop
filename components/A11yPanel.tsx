@@ -55,7 +55,7 @@ export function A11yPanel() {
   const t = T[a.lang];
   const withRail = ["/ops", "/green", "/inspector", "/dashboard", "/truckcam"].includes(path);
   // Жоғарғы жолағы бар беттерде қалқымалы батырма керек емес
-  if (["/", "/track", "/public", "/login", "/citizen", "/worker"].includes(path)) return null;
+  if (["/", "/track", "/public", "/login", "/citizen", "/worker", "/family"].includes(path)) return null;
   return (
     <div data-no-translate className={`no-print fixed z-[70] ${withRail ? "bottom-[calc(80px+env(safe-area-inset-bottom))] left-3 lg:bottom-3 lg:left-[80px]" : "bottom-3 left-3"}`}>
       {open && (

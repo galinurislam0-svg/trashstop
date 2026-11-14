@@ -1,5 +1,6 @@
 // Сервердегі жады-қойма (демо үшін). Жоба өндіріске шыққанда Supabase/PostgreSQL-ге ауыстырылады.
-import type { AiResult, Category, CityState, Report, Source, TreeHealth } from "./types";
+import type { AiResult, Category, CityState, Family, FamTask, Report, Source, TreeHealth } from "./types";
+import { FAM_MAX_TOPUP, FAM_TEMPLATES, type FamTemplate } from "./family";
 import { buildSeed, buildUsers, DISTRICTS } from "./seed";
 import type { Role, User } from "./auth";
 import { CARE_KINDS, CATEGORY, distanceM, type CareKind } from "./meta";
@@ -367,6 +368,16 @@ export async function sync(): Promise<CityState> {
 
 /** Фотоларды бөлек кестеге шығарып, құжатта тек сілтеме қалдырамыз */
 async function offloadPhotos(client: import("pg").PoolClient, s: CityState) {
+  for (const f of s.families ?? [])
+    for (const t of f.tasks)
+      for (const k of ["beforePhoto", "afterPhoto"] as const) {
+        const v = t[k];
+        if (v && v.startsWith("data:")) {
+          const key = `fam:${t.id}:${k}`;
+          await client.query("INSERT INTO ts_photo (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data", [key, v]);
+          t[k] = `db:${key}`;
+        }
+      }
   for (const r of s.reports) {
     for (const k of ["photo", "afterPhoto"] as const) {
       const v = r[k];
@@ -433,4 +444,123 @@ export async function resetAll() {
     g.__trashstop = buildSeed();
     g.__trashstopSeq = 1100;
   });
+}
+
+
+// ───────── «Таза ұрпақ»: отбасы әмияны және балаға экологиялық тапсырмалар ─────────
+
+function famOf(s: CityState, parentId: string): Family {
+  s.families ??= [];
+  let f = s.families.find((x) => x.parentId === parentId);
+  if (!f) {
+    f = { parentId, balance: 0, kids: [], tasks: [] };
+    s.families.push(f);
+  }
+  return f;
+}
+
+/** Ата-ана өз отбасын ғана көреді (фото — сілтеме ретінде) */
+export function familyView(parentId: string) {
+  const s = getState();
+  const f = (s.families ?? []).find((x) => x.parentId === parentId) ?? { parentId, balance: 0, kids: [], tasks: [] };
+  return {
+    ...f,
+    tasks: [...f.tasks]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((t) => ({
+        ...t,
+        beforePhoto: t.beforePhoto ? `/api/family/photo?task=${t.id}&k=before` : null,
+        afterPhoto: t.afterPhoto ? `/api/family/photo?task=${t.id}&k=after` : null,
+      })),
+  };
+}
+
+export function familyAct(parentId: string, body: Record<string, unknown>): void {
+  const s = getState();
+  const f = famOf(s, parentId);
+  const now = Date.now();
+  const a = String(body.action ?? "");
+  const task = (id: unknown) => {
+    const t = f.tasks.find((x) => x.id === id);
+    if (!t) throw new Error("Тапсырма табылмады");
+    return t;
+  };
+
+  if (a === "topup") {
+    const amt = Math.round(Number(body.amount));
+    if (!(amt > 0 && amt <= FAM_MAX_TOPUP)) throw new Error("Сома қате");
+    if (f.balance + amt > 100000) throw new Error("Демо әмиянның шегі — 100 000 ₸");
+    f.balance += amt;
+  } else if (a === "addKid") {
+    const name = String(body.name ?? "").trim().slice(0, 24);
+    if (name.length < 2) throw new Error("Баланың атын жазыңыз");
+    if (f.kids.length >= 6) throw new Error("Ең көбі 6 бала");
+    f.kids.push({ id: `k${now}`, name, saved: 0 });
+  } else if (a === "addTask") {
+    const tpl = FAM_TEMPLATES[String(body.template) as FamTemplate];
+    if (!tpl) throw new Error("Тапсырма түрі қате");
+    const kid = f.kids.find((k) => k.id === body.kidId);
+    if (!kid) throw new Error("Баланы таңдаңыз");
+    const reward = Math.round(Number(body.reward) || tpl.reward);
+    if (!(reward >= 100 && reward <= 10000)) throw new Error("Сыйақы 100–10 000 ₸ аралығында болсын");
+    if (f.balance < reward) throw new Error("Әмиянда ақша жеткіліксіз — алдымен толтырыңыз");
+    f.balance -= reward; // резервке аламыз: бала орындап, ата-ана растағанда беріледі
+    const t: FamTask = {
+      id: `ft${now}`, kidId: kid.id, template: String(body.template), title: tpl.title, level: tpl.level, reward, status: "open",
+      createdAt: now, startedAt: null, submittedAt: null, doneAt: null, beforePhoto: null, afterPhoto: null,
+      lat: null, lng: null, distanceM: null, aiClean: null, aiComment: null, note: null,
+    };
+    f.tasks.push(t);
+  } else if (a === "cancel") {
+    const t = task(body.taskId);
+    if (t.status !== "open" && t.status !== "started") throw new Error("Бұл тапсырманы енді тоқтатуға болмайды");
+    f.balance += t.reward;
+    f.tasks = f.tasks.filter((x) => x.id !== t.id);
+  } else if (a === "start") {
+    const t = task(body.taskId);
+    if (t.status !== "open" && t.status !== "rejected") throw new Error("Тапсырма басталып қойған");
+    if (typeof body.photo !== "string" || !body.photo.startsWith("data:image/")) throw new Error("«Дейін» фотосы керек");
+    t.beforePhoto = body.photo;
+    t.afterPhoto = null;
+    t.lat = Number.isFinite(Number(body.lat)) ? Number(body.lat) : null;
+    t.lng = Number.isFinite(Number(body.lng)) ? Number(body.lng) : null;
+    t.status = "started";
+    t.startedAt = now;
+    t.note = null;
+  } else if (a === "submit") {
+    const t = task(body.taskId);
+    if (t.status !== "started") throw new Error("Алдымен «дейін» фотосын түсіріңіз");
+    if (typeof body.photo !== "string" || !body.photo.startsWith("data:image/")) throw new Error("«Кейін» фотосы керек");
+    const lat = Number(body.lat), lng = Number(body.lng);
+    t.distanceM = t.lat !== null && t.lng !== null && Number.isFinite(lat) && Number.isFinite(lng) ? Math.round(distanceM({ lat: t.lat, lng: t.lng }, { lat, lng })) : null;
+    t.aiClean = typeof body.aiClean === "boolean" ? body.aiClean : null;
+    t.aiComment = typeof body.aiComment === "string" ? body.aiComment.slice(0, 200) : null;
+    t.afterPhoto = body.photo;
+    t.submittedAt = now;
+    t.status = "review";
+  } else if (a === "approve") {
+    const t = task(body.taskId);
+    if (t.status !== "review") throw new Error("Растайтын тапсырма жоқ");
+    const kid = f.kids.find((k) => k.id === t.kidId);
+    if (kid) kid.saved += t.reward;
+    t.status = "paid";
+    t.doneAt = now;
+  } else if (a === "reject") {
+    const t = task(body.taskId);
+    if (t.status !== "review") throw new Error("Қайтаратын тапсырма жоқ");
+    t.status = "rejected";
+    t.note = String(body.note ?? "").slice(0, 160) || "Қайта жасап көр";
+  } else throw new Error("Белгісіз әрекет");
+}
+
+export async function getFamilyPhoto(parentId: string, taskId: string, which: "beforePhoto" | "afterPhoto"): Promise<string | null> {
+  const s = await sync();
+  const t = (s.families ?? []).find((x) => x.parentId === parentId)?.tasks.find((x) => x.id === taskId);
+  const v = t?.[which] ?? null;
+  if (!v) return null;
+  if (v.startsWith("db:") && pool) {
+    const r = await pool.query<{ data: string }>("SELECT data FROM ts_photo WHERE key = $1", [v.slice(3)]);
+    return r.rows[0]?.data ?? null;
+  }
+  return v.startsWith("data:") ? v : null;
 }

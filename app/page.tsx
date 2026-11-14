@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import QRCode from "qrcode";
-import { ArrowRight, ArrowUpRight, BarChart3, Camera, Map as MapIcon, Search } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BarChart3, Camera, Map as MapIcon, Search, Sprout } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
 import { Device } from "@/components/Devices";
 import { GovStrip } from "@/components/GovStrip";
@@ -50,6 +50,7 @@ const SERVICES = [
   { href: "/citizen", t: "Өтініш беру", d: "Қоқысты суретке түсіріңіз: түрін, көлемін және мекенжайын жүйе өзі анықтайды.", cta: "Өтініш беру", icon: Camera },
   { href: "/track", t: "Өтінішті тексеру", d: "Өтініш нөмірі бойынша мәртебесін, орындаушысын және мерзімін біліңіз.", cta: "Тексеру", icon: Search },
   { href: "/public#map", t: "Қала картасы", d: "Қай жерде шағым бар, қай жер тазаланды — бүкіл қала бір картада.", cta: "Картаны ашу", icon: MapIcon },
+  { href: "/family", t: "Таза ұрпақ", d: "Ата-ана балаға аула тазалау тапсырмасын береді, бала еңбекпен ақша табады. Нәтиже — фотомен.", cta: "Отбасымен бастау", icon: Sprout },
   { href: "/public#feed", t: "Қала жаңалығы", d: "Фото мен GPS арқылы расталған жұмыстар: дейін → кейін. Аудандардың индексі және қала батырлары.", cta: "Лентаны ашу", icon: BarChart3 },
 ];
 

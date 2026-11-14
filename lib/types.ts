@@ -110,8 +110,44 @@ export interface Tree {
   checkNote?: string;
 }
 
+/** «Таза ұрпақ»: ата-ана балаға экологиялық тапсырма береді, бала орындап, ақша табады (демо әмиян) */
+export type FamTaskStatus = "open" | "started" | "review" | "paid" | "rejected";
+export interface FamTask {
+  id: string;
+  kidId: string;
+  template: string; // үлгі кілті
+  title: string;
+  level: 1 | 2 | 3; // жеңіл / орташа / ауыр
+  reward: number; // ₸
+  status: FamTaskStatus;
+  createdAt: number;
+  startedAt: number | null;
+  submittedAt: number | null;
+  doneAt: number | null;
+  beforePhoto: string | null;
+  afterPhoto: string | null;
+  lat: number | null; // «дейін» фото орны
+  lng: number | null;
+  distanceM: number | null; // «кейін» фотосы «дейіннен» қанша алыс
+  aiClean: boolean | null;
+  aiComment: string | null;
+  note: string | null; // ата-ананың пікірі
+}
+export interface Kid {
+  id: string;
+  name: string;
+  saved: number; // баланың жинағы, ₸
+}
+export interface Family {
+  parentId: string;
+  balance: number; // ата-ананың әмияны (демо), ₸ — тапсырма берілгенде резервке алынады
+  kids: Kid[];
+  tasks: FamTask[];
+}
+
 export interface CityState {
   users?: import("./auth").User[];
+  families?: Family[];
   reports: Report[];
   workers: Worker[];
   brigades: Brigade[];

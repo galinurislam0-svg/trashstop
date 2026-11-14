@@ -258,6 +258,15 @@ export default function CitizenPage() {
                       </div>
                     ))}
                   </div>
+
+                  <a href="/family" className="mt-4 flex items-center gap-3 rounded-[16px] bg-clean p-4 text-white shadow-sm active:scale-[0.99]">
+                    <span className="text-[34px] leading-none">👨‍👩‍👧</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[17px] font-extrabold">Таза ұрпақ</span>
+                      <span className="block text-[13px] leading-snug text-white/85">Балаңызға аула тазалау тапсырмасын беріңіз — ол еңбекпен ақша табады</span>
+                    </span>
+                    <ChevronRight size={22} />
+                  </a>
                 </motion.div>
               )}
 

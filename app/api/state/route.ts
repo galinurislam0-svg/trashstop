@@ -17,8 +17,9 @@ export async function GET(req: Request) {
     photo: r.photo ? (r.photo.startsWith("/demo/") ? r.photo : `/api/photo/${r.id}?k=before&v=${r.timeline.length}`) : null,
     afterPhoto: r.afterPhoto ? (r.afterPhoto.startsWith("/demo/") ? r.afterPhoto : `/api/photo/${r.id}?k=after&v=${r.timeline.length}`) : null,
   }));
-  const { users, ...pub } = s;
+  const { users, families, ...pub } = s;
   void users;
+  void families; // отбасы деректері — тек ата-анаға, /api/family арқылы
   return NextResponse.json({ ...pub, reports, ai: aiEnabled() }, { headers: { "Cache-Control": "no-store" } });
 }
 
