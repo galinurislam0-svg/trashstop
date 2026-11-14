@@ -224,7 +224,7 @@ export function act(id: string, body: Record<string, unknown>) {
     const aiClean = typeof body.aiClean === "boolean" ? (body.aiClean as boolean) : null;
     const minutes = Math.round((now - (r.assignedAt ?? r.createdAt)) / 60000);
     const reasons: string[] = [];
-    if (dist > 100) reasons.push(`Фото шағым орнынан ${dist > 5000 ? (dist / 1000).toFixed(1) + " км" : dist + " м"} қашықта түсірілген`);
+    if (dist > 100) reasons.push(`Фото шағым орнынан ${dist >= 1000 ? (dist / 1000).toFixed(1).replace(".", ",") + " км" : dist + " м"} қашықта түсірілген`);
     if (aiClean === false) reasons.push("ЖИ: фотода қоқыс әлі көрініп тұр");
     if (!body.photo) reasons.push("«Кейін» фотосы жоқ");
     const ok = reasons.length === 0;

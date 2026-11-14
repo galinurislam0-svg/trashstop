@@ -46,6 +46,16 @@ const TOOLS: Record<Category, string> = {
   burning: "Су, күрек, құм. Жанып тұрса — алдымен 112",
 };
 
+/** 3107 м → «3,1 км»; 872 мин → «14 сағ 32 мин» — қазылар мен тазалықшыға түсінікті */
+function fmtDist(m: number) {
+  return m >= 1000 ? `${(m / 1000).toFixed(1).replace(".", ",")} км` : `${m} м`;
+}
+function fmtMin(m: number) {
+  if (m < 60) return `${m} мин`;
+  const h = Math.floor(m / 60);
+  return m % 60 ? `${h} сағ ${m % 60} мин` : `${h} сағ`;
+}
+
 function speak(text: string) {
   try {
     const u = new SpeechSynthesisUtterance(text);
@@ -59,9 +69,6 @@ function speak(text: string) {
   } catch {}
 }
 
-function fmtDist(m: number) {
-  return m < 1000 ? `${m} м` : `${(m / 1000).toFixed(1)} км`;
-}
 
 export default function WorkerPage() {
   const { state, refresh } = useCity(3000);
@@ -347,9 +354,9 @@ export default function WorkerPage() {
                 {result.comment && <div className="mt-2 text-[15px] text-stone-500">ЖИ: {result.comment}</div>}
                 {result.v && (
                   <div className="mt-4 space-y-2 text-left text-[15px]">
-                    <Row ok={result.v.distanceM <= 100} text={`Орны: шағым нүктесінен ${result.v.distanceM > 5000 ? (result.v.distanceM / 1000).toFixed(1) + " км" : result.v.distanceM + " м"}`} />
+                    <Row ok={result.v.distanceM <= 100} text={`Орны: шағым нүктесінен ${fmtDist(result.v.distanceM)}`} />
                     <Row ok={result.v.aiClean !== false} text={result.v.aiClean === false ? "ЖИ: қоқыс әлі көрініп тұр" : "ЖИ: аумақ таза"} />
-                    <Row ok text={`Уақыты: тағайындаудан кейін ${result.v.minutesAfterAssign} мин`} />
+                    <Row ok text={`Уақыты: тағайындаудан кейін ${fmtMin(result.v.minutesAfterAssign)}`} />
                   </div>
                 )}
                 {result.ok ? (

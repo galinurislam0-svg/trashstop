@@ -841,7 +841,7 @@ function Detail({ r, now, trucks, gpsLive, onClose, onChanged }: { r: Report; no
               {r.verification.ok ? "Фотомен расталды" : "Растау сәтсіз — тапсырма жабылмады"}
             </div>
             <div className="mt-1 text-xs text-stone-400">
-              Геоорын: шағым нүктесінен {r.verification.distanceM} м · {r.verification.minutesAfterAssign} мин ішінде
+              {`Геоорын: шағым нүктесінен ${r.verification.distanceM >= 1000 ? `${(r.verification.distanceM / 1000).toFixed(1).replace(".", ",")} км` : `${r.verification.distanceM} м`}`}
             </div>
             {r.verification.reasons.map((x) => (
               <div key={x} className="mt-1 text-xs text-red-300">
