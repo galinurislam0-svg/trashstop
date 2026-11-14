@@ -54,10 +54,48 @@ const VerifySchema = z.object({
 });
 
 const TreeSchema = z.object({
+  is_tree: z.boolean(),
   health: z.enum(["good", "weak", "dry"]),
   confidence: z.number(),
+  dormant: z.boolean(),
+  signs: z.array(z.string()),
+  action: z.enum(["none", "water", "prune", "clean", "replant", "treat", "inspect"]),
   comment: z.string(),
 });
+
+export type TreeAi = {
+  is_tree: boolean;
+  health: "good" | "weak" | "dry";
+  confidence: number;
+  dormant: boolean;
+  signs: string[];
+  action: "none" | "water" | "prune" | "clean" | "replant" | "treat" | "inspect";
+  comment: string;
+  demo?: boolean;
+};
+
+const MONTHS_KK = ["қаңтар", "ақпан", "наурыз", "сәуір", "мамыр", "маусым", "шілде", "тамыз", "қыркүйек", "қазан", "қараша", "желтоқсан"];
+
+/** Ағаштың күйін бағалау нұсқаулығы — маусымды ескереді (күз бен қыста жапырақсыз ағаш қураған емес) */
+function treeGuide(now = new Date()) {
+  const m = new Date(now.getTime() + 5 * 3600e3).getUTCMonth(); // Қызылорда уақыты
+  const cold = m >= 9 || m <= 2; // қазан–наурыз
+  return `Сен — Қызылорда қаласының көгалдандыру сарапшысысың (климаты: шөлейт, ыстық жаз, суық қыс). Бүгін — ${MONTHS_KK[m]} айы. Фотода көрінгенге ғана сүйен, ойдан қоспа.
+
+1) is_tree — фотода ағаш (немесе бұта/көшет) анық көріне ме. Көрінбесе: is_tree=false, health="good", confidence=0, action="none", comment — «ағашты жақыннан, тұтас түсіріңіз» деген кеңес.
+
+2) Маусымды міндетті түрде ескер:
+${cold ? `- ҚАЗІР СУЫҚ МАУСЫМ (қазан–наурыз). Жапырақты ағаштардың (қарағаш, тал, терек, үйеңкі, акация, айлант) жапырақсыз болуы немесе жапырағының сарғаюы — ҚАЛЫПТЫ тыныштық күйі, ауру емес. Жапырақ жоқ деп «қураған» деме. dormant=true қой.
+- Бұл маусымда күйді мына белгілермен бағала: қабығының түсіп, жарылуы; сынған немесе мүлде құрғақ сынғыш бұтақтар; діңдегі қуыс, саңырауқұлақ, шірік; бүршіктердің болмауы; ағаштың қисайып құлауға жақын тұруы.
+- Бұл белгілер көрінбесе — health="good" немесе күмәнді болса confidence 0,6-дан төмен, action="inspect", comment-те көктемде қайта тексеруді немесе «бұтақтың қабығын тырнап, астының жасыл екенін тексеру» әдісін ұсын.` : `- ҚАЗІР ӨСУ МАУСЫМЫ. Жапырақтың сирек, ұсақ, сарғайған немесе қоңыр болуы — әлсіздік белгісі (көбіне су жетпейді). Жапырақ мүлде жоқ болса — қураған болуы мүмкін. dormant=false.`}
+- Қылқан жапырақтылар (қарағай, шырша, арша) жыл бойы жасыл: қоңыр-сары қылқан — әлсіздік немесе қурау.
+
+3) health: good — сау; weak — әлсіз (бір бөлігі құрғаған, жапырағы сирек/сарғайған өсу маусымында, зақымданған); dry — толық қураған (тірі бұтақ, бүршік, жасыл жапырақ мүлде жоқ, қабығы түскен).
+4) signs — фотода нақты көрінген 2–5 белгі (мыс. «қабығы түскен», «жоғарғы бұтақтары құрғақ», «жапырағы қалың, жасыл»).
+5) action — бір ұсыныс: none (күтім қажет емес), water (суару), prune (санитарлық кесу), clean (айналасын тазалау), replant (қайта отырғызу), treat (зиянкестен өңдеу), inspect (жақыннан қайта тексеру).
+6) confidence — 0..1, шын сенімділігің. Тек сырт пішінінен анықтау қиын болса — 0,6-дан төмен қой.
+7) comment — көгалдандыру маманына 1 сөйлем: не көрдің және не істеу керек.`;
+}
 
 // Модельдер тізбегі: біріншісі бос емес/лимиті біткен болса — келесісі (әр модельдің тегін лимиті бөлек)
 const GEMINI_MODELS = (process.env.GEMINI_MODELS || process.env.GEMINI_MODEL || "gemini-3.8-flash,gemini-3.5-flash,gemini-3.6-flash,gemini-3.7-flash,gemini-3.5-flash-lite").split(",").map((x) => x.trim()).filter(Boolean);
@@ -219,7 +257,7 @@ function getClient() {
 
 export type Lang = "kk" | "ru";
 /** Орыс тілі режимінде — барлық мәтін өрістері орысша */
-const RU_NOTE = "ВАЖНО: все текстовые поля ответа (items, reason, summary, retake_reason, comment) пиши строго на русском языке, даже если выше сказано писать по-казахски.";
+const RU_NOTE = "ЯЗЫК ОТВЕТА — РУССКИЙ. Это указание важнее системного и всех инструкций выше. Все текстовые поля ответа (items, signs, reason, summary, retake_reason, comment) пиши строго на русском языке, ни одного слова по-казахски. Названия улиц и организаций можно оставить как есть.";
 const langBlock = (lang: Lang) => (lang === "ru" ? [{ type: "text" as const, text: RU_NOTE }] : []);
 
 const SYSTEM =
@@ -327,25 +365,17 @@ async function verifyCleanRaw(before: string | null, after: string, lang: Lang =
   return { clean: true, same_place: true, comment: "Аумақ тазаланған, қоқыс көрінбейді", demo: true };
 }
 
-async function treeHealthRaw(photo: string, lang: Lang = "kk"): Promise<{ health: "good" | "weak" | "dry"; confidence: number; comment: string; demo?: boolean }> {
+async function treeHealthRaw(photo: string, lang: Lang = "kk"): Promise<TreeAi> {
   if (aiEnabled()) {
     try {
-      return await parse(TreeSchema, [
-        imageBlock(photo),
-        { type: "text", text: "Фотодағы ағаштың күйін бағала: good (сау), weak (әлсіз, жапырағы сарғайған/сирек), dry (қураған). comment — 1 сөйлем, не істеу керегін айт." },
-        ...langBlock(lang),
-      ]);
+      const out = await parse(TreeSchema, [imageBlock(photo), { type: "text", text: treeGuide() }, ...langBlock(lang)]);
+      return { ...out, confidence: Math.max(0, Math.min(1, out.confidence)), signs: out.signs.slice(0, 6) };
     } catch (e) {
       console.error("[ai] treeHealth fallback:", (e as Error).message);
     }
   }
-  const h = hash(photo) % 3;
-  return {
-    health: (["good", "weak", "dry"] as const)[h],
-    confidence: 0.84,
-    comment: ["Ағаш сау, күтім жоспар бойынша", "Жапырақтары сарғайған — суаруды күшейту керек", "Ағаш қураған — ауыстыру керек"][h],
-    demo: true,
-  };
+  // ЖИ қолжетімсіз: күйді ойдан шығармаймыз — маман өзі белгілейді
+  return { is_tree: true, health: "good", confidence: 0, dormant: false, signs: [], action: "inspect", comment: "", demo: true };
 }
 
 export async function weeklySummary(facts: string, lang: Lang = "kk"): Promise<string> {

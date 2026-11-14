@@ -8,6 +8,7 @@ import { TestDataBadge } from "@/components/ui";
 import { compressImage, post, useCity, useHeaderBottom } from "@/lib/client";
 import { CARE_KINDS, HEALTH, distanceM, kzWeekday, type CareKind } from "@/lib/meta";
 import type { Tree, TreeHealth } from "@/lib/types";
+import type { TreeAi } from "@/lib/ai";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -28,7 +29,7 @@ export default function GreenPage() {
   const [summer, setSummer] = useState(false);
   const [selTree, setSelTree] = useState<Tree | null>(null);
   const [focus, setFocus] = useState<{ lat: number; lng: number; zoom?: number; key?: number } | null>(null);
-  const [aiRes, setAiRes] = useState<{ health: TreeHealth; comment: string; confidence: number } | null>(null);
+  const [aiRes, setAiRes] = useState<TreeAi | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [filter, setFilter] = useState<TreeHealth | "all">("all");
   const [mobileMap, setMobileMap] = useState(false);
@@ -294,15 +295,7 @@ export default function GreenPage() {
             {aiBusy ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />} Ағашты суретке түсіру
           </button>
           <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onTreePhoto(e.target.files?.[0])} />
-          {aiRes && (
-            <div className="mt-2 rounded-lg bg-black/20 p-2.5 text-sm">
-              <span className="font-bold" style={{ color: HEALTH[aiRes.health].color }}>
-                {HEALTH[aiRes.health].label}
-              </span>{" "}
-              · {Math.round(aiRes.confidence * 100)}%<div className="text-xs text-stone-400">{aiRes.comment}</div>
-              {!selTree && <div className="mt-1 text-[11px] text-stone-500">Картадан ағашты таңдасаңыз, нәтижені соған сақтауға болады.</div>}
-            </div>
-          )}
+          {aiRes && <TreeAiResult r={aiRes} hint={!selTree} />}
         </div>
       </aside>
 
@@ -321,9 +314,12 @@ export default function GreenPage() {
 }
 
 /** Ағаш карточкасы: жағдайын тіркеу + күтім тапсырмасын жоспарлау (жауапты, мерзім) */
-function TreeCard({ tree, ai, onClose, onSaved }: { tree: Tree; ai: { health: TreeHealth; comment: string; confidence: number } | null; onClose: () => void; onSaved: () => void }) {
+function TreeCard({ tree, ai, onClose, onSaved }: { tree: Tree; ai: TreeAi | null; onClose: () => void; onSaved: () => void }) {
+  const aiOk = !!ai && !ai.demo && ai.is_tree && ai.confidence >= 0.6;
   const [busy, setBusy] = useState(false);
-  const [kind, setKind] = useState<CareKind>(tree.health === "dry" ? "replant" : tree.health === "weak" ? "water" : "prune");
+  const [kind, setKind] = useState<CareKind>(
+    aiOk && ai!.action in CARE_KINDS ? (ai!.action as CareKind) : tree.health === "dry" ? "replant" : tree.health === "weak" ? "water" : "prune",
+  );
   const [days, setDays] = useState(tree.health === "good" ? 7 : 3);
   const [done, setDone] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -391,13 +387,13 @@ function TreeCard({ tree, ai, onClose, onSaved }: { tree: Tree; ai: { health: Tr
           </button>
         ))}
       </div>
-      {ai && ai.health !== tree.health && (
+      {aiOk && ai!.health !== tree.health && (
         <button
           disabled={busy}
-          onClick={() => setHealth(ai.health, `ЖИ: ${ai.comment}`)}
+          onClick={() => setHealth(ai!.health, `ЖИ: ${ai!.comment}`)}
           className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-[4px] bg-white/5 py-2 text-[12px] font-semibold text-salt hover:bg-white/10"
         >
-          <Sparkles size={13} /> {`ЖИ нәтижесін сақтау: ${HEALTH[ai.health].label}`}
+          <Sparkles size={13} /> {`ЖИ нәтижесін сақтау: ${HEALTH[ai!.health].label}`}
         </button>
       )}
 
@@ -442,6 +438,38 @@ function TreeCard({ tree, ai, onClose, onSaved }: { tree: Tree; ai: { health: Tr
         </div>
       )}
       {err && <div className="mt-2 text-[13px] text-red-300">{err}</div>}
+    </div>
+  );
+}
+
+/** ЖИ нәтижесі: шыншыл көрсету — сенімсіз немесе қолжетімсіз болса, күйді ойдан шығармаймыз */
+function TreeAiResult({ r, hint }: { r: TreeAi; hint: boolean }) {
+  if (r.demo)
+    return <div className="mt-2 rounded-lg bg-amber-400/10 p-2.5 text-[13px] text-amber-200">ЖИ қазір қолжетімсіз. Ағаштың күйін картадан таңдап, өзіңіз белгілеңіз.</div>;
+  if (!r.is_tree)
+    return <div className="mt-2 rounded-lg bg-amber-400/10 p-2.5 text-[13px] text-amber-200">{r.comment || "Суретте ағаш анық көрінбейді. Ағашты жақыннан, тұтас түсіріңіз."}</div>;
+  const unsure = r.confidence < 0.6;
+  const act = r.action !== "none" && r.action !== "inspect" ? CARE_KINDS[r.action as CareKind] : null;
+  return (
+    <div className="mt-2 space-y-1.5 rounded-lg bg-black/20 p-2.5 text-sm">
+      <div>
+        <span className="font-bold" style={{ color: unsure ? "#fbbf24" : HEALTH[r.health].color }}>
+          {unsure ? "Күмәнді" : HEALTH[r.health].label}
+        </span>
+        <span className="text-stone-400">{` · сенімділігі ${Math.round(r.confidence * 100)}%`}</span>
+      </div>
+      {r.dormant && <div className="text-[12px] text-sky-300">❄ Тыныштық маусымы: жапырақсыз болуы — қалыпты</div>}
+      {r.signs.length > 0 && (
+        <ul className="space-y-0.5 text-[12px] text-stone-300">
+          {r.signs.map((x) => (
+            <li key={x}>{`• ${x}`}</li>
+          ))}
+        </ul>
+      )}
+      <div className="text-xs text-stone-400">{r.comment}</div>
+      {act && <div className="text-[12px] font-semibold text-[#6fd39c]">{`Ұсыныс: ${act.emoji} ${act.label}`}</div>}
+      {r.action === "inspect" && <div className="text-[12px] font-semibold text-amber-300">Ұсыныс: жақыннан қайта тексеру</div>}
+      {hint && !unsure && <div className="text-[11px] text-stone-500">Картадан ағашты таңдасаңыз, нәтижені соған сақтауға болады.</div>}
     </div>
   );
 }
