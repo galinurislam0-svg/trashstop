@@ -77,7 +77,21 @@ export function aiEnabled() {
   return geminiEnabled() || claudeEnabled();
 }
 export function aiProvider() {
-  return geminiEnabled() ? "Gemini" : claudeEnabled() ? "Claude" : "демо";
+  return claudeEnabled() ? "Claude" : geminiEnabled() ? "Gemini" : "демо";
+}
+
+/** Claude-тың ақшасы біткенде немесе кілт қате болса — біраз уақыт Gemini-мен ғана жұмыс істейміз */
+let claudeBlockedUntil = 0;
+function claudeReady() {
+  return claudeEnabled() && Date.now() > claudeBlockedUntil;
+}
+function claudeFailed(e: unknown) {
+  const err = e as { status?: number; message?: string };
+  const msg = String(err.message ?? "");
+  // 401/403 — кілт; 402/400 «credit balance» — ақша бітті; 429 — жиілік шегі
+  if (err.status === 401 || err.status === 403 || /credit balance|billing/i.test(msg)) claudeBlockedUntil = Date.now() + 60 * 60_000;
+  else if (err.status === 429 || err.status === 529) claudeBlockedUntil = Date.now() + 60_000;
+  console.error(`[ai] Claude қате (${err.status ?? "?"}): ${msg.slice(0, 160)} → Gemini`);
 }
 
 const clients = new Map<string, GoogleGenAI>();
@@ -199,7 +213,7 @@ function imageBlock(dataUrl: string) {
 
 let client: Anthropic | null = null;
 function getClient() {
-  client ??= new Anthropic({ timeout: 25_000, maxRetries: 1 });
+  client ??= new Anthropic({ timeout: 40_000, maxRetries: 1 });
   return client;
 }
 
@@ -213,11 +227,23 @@ const SYSTEM =
   "Фотоларды тек тазалық, қоқыс және жасыл екпелер тұрғысынан бағала. Барлық мәтінді қазақ тілінде, қысқа (1 сөйлем) жаз. " +
   "Адамдардың жүзін немесе жеке басын сипаттама.";
 
+/** Алдымен Claude (сапасы жоғары, күндік шектеу жоқ), болмаса — Gemini кілттері */
 async function parse<T extends z.ZodType>(schema: T, content: Anthropic.Beta.Messages.BetaContentBlockParam[]): Promise<z.infer<T>> {
-  if (geminiEnabled()) return geminiJson(schema, content);
+  if (claudeReady()) {
+    try {
+      return await claudeJson(schema, content);
+    } catch (e) {
+      claudeFailed(e);
+      if (!geminiEnabled()) throw e;
+    }
+  }
+  return geminiJson(schema, content);
+}
+
+async function claudeJson<T extends z.ZodType>(schema: T, content: Anthropic.Beta.Messages.BetaContentBlockParam[]): Promise<z.infer<T>> {
   const res = await getClient().beta.messages.parse({
     model: MODEL,
-    max_tokens: 2048,
+    max_tokens: 4096,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     output_config: { effort: "low", format: betaZodOutputFormat(schema) },
@@ -324,15 +350,7 @@ async function treeHealthRaw(photo: string, lang: Lang = "kk"): Promise<{ health
 
 export async function weeklySummary(facts: string, lang: Lang = "kk"): Promise<string> {
   const ask = (lang === "ru" ? "Напиши по-русски в официальном деловом стиле. " : "") + `Мына көрсеткіштер бойынша әкімдікке арналған апталық есептің қорытындысын 4–5 сөйлеммен ресми ${lang === "ru" ? "орыс" : "қазақ"} тілінде жаз. Ұсыныстар қос. Тақырыпсыз, тек мәтін. Сызықша (тире) қолданба.\n\n${facts}`;
-  if (geminiEnabled()) {
-    try {
-      const t = await geminiText(ask);
-      if (t) return t;
-    } catch (e) {
-      console.error("[ai] gemini summary fallback:", (e as Error).message);
-    }
-  }
-  if (claudeEnabled()) {
+  if (claudeReady()) {
     try {
       const res = await getClient().beta.messages.create({
         model: MODEL,
@@ -344,14 +362,22 @@ export async function weeklySummary(facts: string, lang: Lang = "kk"): Promise<s
         messages: [
           {
             role: "user",
-            content: `Мына көрсеткіштер бойынша әкімдікке арналған апталық есептің қорытындысын 4–5 сөйлеммен ресми қазақ тілінде жаз. Ұсыныстар қос. Тақырыпсыз, тек мәтін.\n\n${facts}`,
+            content: ask,
           },
         ],
       });
       const text = res.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("\n").trim();
       if (text) return text;
     } catch (e) {
-      console.error("[ai] weeklySummary fallback:", (e as Error).message);
+      claudeFailed(e);
+    }
+  }
+  if (geminiEnabled()) {
+    try {
+      const t = await geminiText(ask);
+      if (t) return t;
+    } catch (e) {
+      console.error("[ai] gemini summary fallback:", (e as Error).message);
     }
   }
   return "";
