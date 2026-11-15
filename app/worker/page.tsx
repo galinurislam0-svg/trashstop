@@ -28,6 +28,8 @@ import { UserChip, useMe } from "@/components/UserChip";
 import { Logo } from "@/components/Logo";
 import { Avatar, PhotoBox, Stars } from "@/components/ui";
 import { compressImage, getGeo, inCity, post, useCity } from "@/lib/client";
+import { demoFile, openParam } from "@/lib/demo";
+import { activeCity } from "@/lib/city-client";
 import { CATEGORY, distanceM, isOverdue, timeLeft } from "@/lib/meta";
 import type { Category, Report, Verification } from "@/lib/types";
 import { CitySwitch } from "@/components/CitySwitch";
@@ -117,7 +119,11 @@ export default function WorkerPage() {
         .sort((a, b) => Number(b.status === "in_progress") - Number(a.status === "in_progress") || (a.deadline ?? 0) - (b.deadline ?? 0)),
     [state, workerId, isWorker, me],
   );
-  const current = tasks.find((t) => t.id === focusId) ?? tasks[0] ?? null;
+  // ?open=TS-1101 — сол тапсырманы бірінші көрсету (демо нұсқаушы)
+  const openCode = useRef<string | null | undefined>(undefined);
+  if (openCode.current === undefined && typeof window !== "undefined") openCode.current = openParam();
+  const opened = openCode.current ? tasks.find((t) => t.code === openCode.current) : undefined;
+  const current = tasks.find((t) => t.id === focusId) ?? opened ?? tasks[0] ?? null;
   const rest = tasks.filter((t) => t.id !== current?.id);
   const doneToday = (state?.reports ?? []).filter((r) => r.workerId === workerId && r.status === "done" && r.doneAt && Date.now() - r.doneAt < 864e5).length;
   const workersWithTasks = useMemo(() => {
@@ -245,6 +251,10 @@ export default function WorkerPage() {
               busy={busyId === current.id}
               onStart={() => start(current)}
               onShoot={() => shoot(current)}
+              onDemo={async () => {
+                target.current = current;
+                await onPhoto(await demoFile("/demo/p23.jpg", "after.jpg"));
+              }}
             />
           ) : (
             <section className="mt-5 rounded-[24px] bg-white p-8 text-center shadow-sm">
@@ -402,6 +412,7 @@ function CurrentTask({
   busy,
   onStart,
   onShoot,
+  onDemo,
 }: {
   r: Report;
   now: number;
@@ -409,6 +420,7 @@ function CurrentTask({
   busy: boolean;
   onStart: () => void;
   onShoot: () => void;
+  onDemo: () => void;
 }) {
   const over = isOverdue(r, now);
   const step = r.status === "assigned" ? 0 : 1; // 0: жолға шығу, 1: орында — фото
@@ -489,11 +501,16 @@ function CurrentTask({
             )}
           </button>
         )}
+        {step === 1 && !busy && (
+          <button type="button" onClick={onDemo} className="w-full text-center text-[14px] font-bold text-ink underline decoration-dashed underline-offset-4">
+            Фото жоқ па? Демо: таза жер фотосымен
+          </button>
+        )}
         <p className="text-center text-[14px] text-stone-500">{step === 0 ? "Орынға барғанда, жұмысты бітіріп, фото түсіресіз" : "Тазалаған жерді шағымдағыдай бұрыштан түсіріңіз"}</p>
 
         <div className="grid grid-cols-3 gap-2">
           <a
-            href={`https://2gis.kz/kyzylorda/directions/points/%7C${r.lng}%2C${r.lat}`}
+            href={`https://2gis.kz/${activeCity().id}/directions/points/%7C${r.lng}%2C${r.lat}`}
             target="_blank"
             rel="noreferrer"
             className="flex h-14 flex-col items-center justify-center rounded-[12px] bg-[#e8f5e0] text-[14px] font-bold text-[#1f6b2a]"

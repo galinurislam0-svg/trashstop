@@ -12,6 +12,7 @@ import { approxAddress, compressImage, getBestGeo, inCity, post, readExifGps, re
 import { CATEGORY, HAZARD, LEGAL_TERM, VOLUME, fmtTime, timeAgo } from "@/lib/meta";
 import { useCityConf } from "@/components/CityProvider";
 import { activeCity } from "@/lib/city-client";
+import { demoFile, rememberTourCode } from "@/lib/demo";
 import type { AiResult, Category, Report } from "@/lib/types";
 import { CitySwitch } from "@/components/CitySwitch";
 
@@ -116,7 +117,7 @@ export default function CitizenPage() {
   );
   const points = myReports.length * 10 + myReports.filter((r) => r.status === "done").length * 15;
 
-  async function onFile(f: File | undefined) {
+  async function onFile(f: File | undefined, demo = false) {
     if (!f) return;
     setErr(null);
     setStep("analyzing");
@@ -127,7 +128,14 @@ export default function CitizenPage() {
       setQuality(await photoQuality(img));
       setPhoto(img);
       setAddr(null);
-      if (inCity(exif)) {
+      if (demo) {
+        // Демо фото: орын — қаланың демо нүктесі (геолокацияға рұқсат бермеген адам да соңына дейін өте алады; картадан өзгертуге болады)
+        const d = activeCity().demoPoint;
+        setLoc({ src: "map" });
+        setPos(d);
+        setGpsReal(false);
+        lookup(d);
+      } else if (inCity(exif)) {
         // Фотоның өз координатасы — ең сенімді дерек (түсірілген жер)
         setLoc({ src: "exif" });
         setPos(exif!);
@@ -169,6 +177,7 @@ export default function CitizenPage() {
       setMine(next);
       saveMine(next);
       setSent({ code: res.mergedInto ?? res.code, mergedInto: res.mergedInto });
+      rememberTourCode(res.mergedInto ?? res.code);
       setStep("sent");
       refresh();
     } catch (e) {
@@ -236,6 +245,13 @@ export default function CitizenPage() {
                     ))}
                   </div>
 
+                  <button
+                    type="button"
+                    onClick={async () => onFile(await demoFile(mode === "burning" ? "/demo/p15.jpg" : mode === "car" ? "/demo/p09.jpg" : "/demo/p02.jpg"), true)}
+                    className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-ink/25 bg-white px-4 text-[15px] font-bold text-ink transition hover:border-ink/60"
+                  >
+                    <ImagePlus size={18} /> Фото жоқ па? Демо фотомен байқау
+                  </button>
                   <button
                     onClick={() => fileRef.current?.click()}
                     className="group relative mt-4 flex aspect-square w-full flex-col items-center justify-center overflow-hidden rounded-[32px] bg-qyzyl text-white transition active:scale-[0.98]"

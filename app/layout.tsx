@@ -7,6 +7,7 @@ import { DemoBar } from "@/components/DemoBar";
 import { A11yPanel, A11Y_BOOT } from "@/components/A11yPanel";
 import { Translator } from "@/components/Translator";
 import { CityProvider } from "@/components/CityProvider";
+import { TourHint } from "@/components/TourHint";
 import { cookies } from "next/headers";
 import { CITY_COOKIE, cityFromCookieHeader } from "@/lib/cities";
 
@@ -43,6 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {children}
           <Transition />
           <DemoBar />
+          <TourHint />
           <A11yPanel />
           <Translator />
         </CityProvider>

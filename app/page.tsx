@@ -11,6 +11,7 @@ import { Device } from "@/components/Devices";
 import { GovStrip } from "@/components/GovStrip";
 import { useCity } from "@/lib/client";
 import { useCityConf } from "@/components/CityProvider";
+import { startDemo } from "@/lib/demo";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -318,8 +319,17 @@ export default function Home() {
             </span>
           </div>
           <div data-corner className="col-span-6 flex flex-col items-end gap-2 md:col-span-3">
-            <Link href="/citizen" className="sweep-btn inline-flex items-center gap-3 rounded-full bg-ink px-6 py-4 text-[15px] font-semibold text-salt" style={{ ["--sweep" as string]: "#e2231a" }}>
-              Сигнал жіберу <ArrowRight size={18} />
+            <button
+              type="button"
+              onClick={() => startDemo()}
+              className="sweep-btn inline-flex items-center gap-3 rounded-full bg-qyzyl px-6 py-4 text-[15px] font-bold text-white shadow-lg"
+              style={{ ["--sweep" as string]: "#0e0e0d" }}
+            >
+              ▶ Демоны бастау — тіркелусіз
+            </button>
+            <span className="text-right text-[12px] text-muted">3 минут · 5 қадам · нұсқаушымен</span>
+            <Link href="/citizen" className="sweep-line inline-flex items-center gap-1.5 text-[13px] font-semibold">
+              Сигнал жіберу <ArrowRight size={14} />
             </Link>
             <Link href="/ops" className="sweep-line text-[13px] font-semibold">
               Басқару орталығына өту
@@ -329,6 +339,7 @@ export default function Home() {
       </section>
 
       <main id="main">
+        <AtGlance />
         {/* ── ҚЫЗМЕТТЕР: мемлекеттік порталдағыдай — не істеуге болатыны бірден көрінеді ── */}
         <section aria-labelledby="services-h" className="a11y-zoom border-b border-line bg-white px-[var(--gutter)] py-14">
           <div className="grid grid-cols-12 gap-[var(--gutter)]">
@@ -521,5 +532,51 @@ export default function Home() {
         </div>
       </footer>
     </div>
+  );
+}
+
+/* ── Жоба бір қарағанда: іріктеушіге 30 секундта бәрі түсінікті болсын ── */
+function AtGlance() {
+  const city = useCityConf();
+  const cards = [
+    { k: "Мәселе", t: "Шағым қабылданады, бірақ жұмыстың жасалғанын ешкім дәлелдемейді", d: "Тапсырма «орындалды» деп жабылады, қоқыс орнында қалады. Тұрғын нәтижені көрмейді, сенім жоғалады." },
+    { k: "Шешім", t: "Тапсырма тек фото + GPS + ЖИ дәлелімен жабылады", d: "Тұрғын фото жібереді → ЖИ талдайды → ең жақын көлік жіберіледі → орындаушы «кейін» фотосын түсіреді. 100 м-ден алыс немесе қоқыс көрінсе — жабылмайды." },
+    { k: "Кімге", t: "Әкімдік, тазалық мекемесі, тұрғын", d: "Әкімдікке — бір экрандағы бақылау. Мекемеге — көлік пен бригаданы басқару. Тұрғынға — шағымының нәтижесі фотомен." },
+    { k: "Дәлел", t: "GovTech Hackathon 2026 — 1-орын", d: "Қызылорда. «Қызылорда тазалығы» мекемесінің қолдау хаты бар. Жоба әкімдікке таныстыруға шақырылды." },
+    { k: "Масштаб", t: "Бір платформа — бірнеше қала", d: `Қазір Қызылорда және Алматы (8 аудан, нақты көшелер). Жаңа қала — бір баптау файлы. Сіз қазір: ${city.name}.` },
+    { k: "Бизнес-модель", t: "B2G жазылым + B2B", d: "Әкімдік/мекеме қала көлеміне қарай жылдық лицензия төлейді. Қосымша: ОСИ/КСК мен бизнес орталықтарына аула тазалығын дәлелдеу." },
+  ];
+  return (
+    <section aria-labelledby="glance-h" className="border-b border-line bg-[#fbfaf7] px-[var(--gutter)] py-14">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="mono text-[12px] uppercase tracking-wider text-muted">30 секундта</div>
+          <h2 id="glance-h" className="display mt-1 text-[clamp(28px,4vw,44px)] leading-[1.05] text-ink">
+            Жоба бір қарағанда
+          </h2>
+        </div>
+        <button type="button" onClick={() => startDemo()} className="inline-flex min-h-[48px] items-center gap-2 rounded-full bg-ink px-5 text-[15px] font-bold text-white">
+          ▶ Өзіңіз байқап көріңіз <ArrowRight size={16} />
+        </button>
+      </div>
+      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {cards.map((c) => (
+          <article key={c.k} className="rounded-[14px] border border-line bg-white p-5">
+            <div className="mono text-[11px] font-bold uppercase tracking-wider text-qyzyl">{c.k}</div>
+            <h3 className="mt-2 text-[18px] font-extrabold leading-snug text-ink">{c.t}</h3>
+            <p className="mt-2 text-[15px] leading-relaxed text-stone-600">{c.d}</p>
+          </article>
+        ))}
+      </div>
+      <ol className="mt-6 grid gap-2 text-[14px] text-ink sm:grid-cols-5">
+        {["Тұрғын: демо фотомен шағым", "Оператор: «Жіберу»", "Тазалықшы: «кейін» фотосы", "Тұрғын: нәтиже мен баға", "Әкімдік: бәрі бір экранда"].map((t, i) => (
+          <li key={t} className="flex items-center gap-2 rounded-[10px] bg-white px-3 py-2.5 shadow-sm">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-[12px] font-bold text-white">{i + 1}</span>
+            {t}
+          </li>
+        ))}
+      </ol>
+      <p className="mt-4 text-[13px] text-muted">Деректер тестілік (белгіленген). Карта мен мекенжайлар нақты — OpenStreetMap. Демо деректер кез келген уақытта қалпына келтіріледі.</p>
+    </section>
   );
 }

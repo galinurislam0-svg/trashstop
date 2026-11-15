@@ -17,6 +17,7 @@ const STATUS_LABEL: Record<string, string> = { new: "жаңа", assigned: "та�
 import type { MapPoint, Vehicle } from "@/components/MapView";
 import { HEALTH, kzWeekday } from "@/lib/meta";
 import { activeCity } from "@/lib/city-client";
+import { openParam } from "@/lib/demo";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -111,6 +112,19 @@ export default function OpsPage() {
 
   const now = state?.now ?? Date.now();
   const reports = state?.reports ?? [];
+
+  // ?open=TS-1101 — шағымды бірден ашу (демо нұсқаушы, сілтемемен бөлісу)
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!state || opened.current) return;
+    opened.current = true;
+    const code = openParam();
+    const r = code ? state.reports.find((x) => x.code === code) : null;
+    if (r) {
+      setSelected(r.id);
+      setFocus({ lat: r.lat, lng: r.lng, zoom: 16, key: Date.now() });
+    }
+  }, [state]);
 
   // Жаңа сигнал келгенде — дыбыс, хабарлама, картаға ұшу
   useEffect(() => {
@@ -746,7 +760,7 @@ function Detail({ r, now, trucks, gpsLive, onClose, onChanged }: { r: Report; no
             <MapPin size={12} /> {r.address}, {r.district}
           </span>
           <a
-            href={`https://2gis.kz/kyzylorda/geo/${r.lng}%2C${r.lat}`}
+            href={`https://2gis.kz/${activeCity().id}/geo/${r.lng}%2C${r.lat}`}
             target="_blank"
             rel="noreferrer"
             className="sweep-line text-[11px] font-semibold text-salt"
