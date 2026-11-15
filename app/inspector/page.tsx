@@ -7,6 +7,7 @@ import { PhotoBox, StatusPill, TestDataBadge } from "@/components/ui";
 import { approxAddress, compressImage, post, useCity } from "@/lib/client";
 import { LAW_REF, distanceM, fmtTime } from "@/lib/meta";
 import type { AiResult, Report } from "@/lib/types";
+import { activeCity } from "@/lib/city-client";
 
 async function sha256(text: string) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
@@ -38,8 +39,9 @@ export default function InspectorPage() {
     try {
       const photo = await compressImage(f);
       const ai = await post<AiResult>("/api/ai/analyze", { photo, hint: "car" });
-      const lat = 44.8488 + (Math.random() - 0.5) * 0.01;
-      const lng = 65.5092 + (Math.random() - 0.5) * 0.014;
+      const [clng, clat] = activeCity().center; // бейнетіркеуіш кадрында орын жоқ — демода қала орталығы маңы
+      const lat = clat + (Math.random() - 0.5) * 0.01;
+      const lng = clng + (Math.random() - 0.5) * 0.014;
       const res = await post<{ id: string }>("/api/reports", {
         lat,
         lng,

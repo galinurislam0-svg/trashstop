@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { AuthError, requireRole } from "@/lib/auth";
 import { rateLimited } from "@/lib/ratelimit";
 import { weeklySummary } from "@/lib/ai";
+import { withCity } from "@/lib/city-server";
 
 export const maxDuration = 60;
 
-export async function POST(req: Request) {
+async function POST_(req: Request) {
   try {
     requireRole(req, ["akimat", "operator"]);
   } catch (e) {
@@ -17,3 +18,5 @@ export async function POST(req: Request) {
   const text = await weeklySummary(String(body.facts ?? "").slice(0, 4000), (req.headers.get("x-lang") === "ru" ? "ru" : "kk"));
   return NextResponse.json({ text });
 }
+
+export const POST = withCity(POST_);

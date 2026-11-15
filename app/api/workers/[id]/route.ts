@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { AuthError, requireRole } from "@/lib/auth";
 import { rateLimited } from "@/lib/ratelimit";
 import { mutate, thankWorker } from "@/lib/store";
+import { withCity } from "@/lib/city-server";
 
-export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+async function POST_(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     requireRole(req);
   } catch (e) {
@@ -20,3 +21,5 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
 }
+
+export const POST = withCity(POST_);

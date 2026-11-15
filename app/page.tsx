@@ -10,6 +10,7 @@ import { LogoMark } from "@/components/Logo";
 import { Device } from "@/components/Devices";
 import { GovStrip } from "@/components/GovStrip";
 import { useCity } from "@/lib/client";
+import { useCityConf } from "@/components/CityProvider";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -54,6 +55,14 @@ const SERVICES = [
   { href: "/public#feed", t: "Қала жаңалығы", d: "Фото мен GPS арқылы расталған жұмыстар: дейін → кейін. Аудандардың индексі және қала батырлары.", cta: "Лентаны ашу", icon: BarChart3 },
 ];
 
+// Әр қаланың фактілері — тек дереккөзі бар сандар
+const FACTS_ALMATY = [
+  { n: "2,37 млн", u: "тұрғын", l: "Алматыда тұрады — Қазақстандағы ең үлкен қала.", s: "stat.gov.kz, 2026" },
+  { n: "8 590", u: "бұзушылық", l: "абаттандыру қағидалары бойынша (ӘҚБтК 505-бап) 2026 жылы анықталды.", s: "Kazlenta, 2026" },
+  { n: "100 000+", u: "нысан", l: "қоқыс шығару бойынша толық цифрлық бақылаусыз қызмет алады.", s: "vapress.kz, 2026" },
+  { n: "4 млн+", u: "ағаш", l: "қалада өседі. Жасыл аймақ — қала аумағының 33%-ы.", s: "inform.kz, 2026" },
+];
+
 const FACTS = [
   { n: "100 000", u: "ағаш", l: "соңғы үш жылда қалада отырғызылды. Жартысынан көбі қурап қалды.", s: "24.kz, 2024" },
   { n: "150-160", u: "тонна", l: "қоқыс Қызылордадан күн сайын шығарылады.", s: "Tengrinews / Massaget.kz" },
@@ -71,6 +80,8 @@ const ROLES = [
 ];
 
 export default function Home() {
+  const city = useCityConf();
+  const almaty = city.id === "almaty";
   const { state } = useCity(5000);
   const root = useRef<HTMLDivElement>(null);
   const [clock, setClock] = useState("");
@@ -253,12 +264,12 @@ export default function Home() {
         </header>
 
         <div className="pointer-events-none absolute inset-x-0 top-[19vh] z-10 px-[var(--gutter)] md:top-[15vh]">
-          <h1 className="sr-only">TrashSTOP: Қызылорданы қызылдан тазаға сыпыратын жүйе</h1>
+          <h1 className="sr-only">{almaty ? "TrashSTOP: Алматыны таза қалаға айналдыратын жүйе" : "TrashSTOP: Қызылорданы қызылдан тазаға сыпыратын жүйе"}</h1>
           <div aria-hidden="true" data-no-translate className="display select-none text-[29vw] leading-[0.84] md:text-[length:var(--t-mega)]">
             <div data-hero-line className="relative w-fit">
               {/* қызыл қабат: сыпыру сызығынан оңға қарай қалады */}
               <span className="block text-qyzyl" style={{ clipPath: "inset(0 0 0 calc(var(--p) * 100%))" }}>
-                Қызыл
+                {almaty ? "Қоқыс" : "Қызыл"}
               </span>
               {/* таза қабат: сызықтың сол жағы */}
               <span className="absolute inset-0 block text-ink" style={{ clipPath: "inset(0 calc((1 - var(--p)) * 100%) 0 0)" }}>
@@ -271,8 +282,8 @@ export default function Home() {
                 </span>
               </span>
             </div>
-            <div data-hero-line className="-mt-[0.02em] text-ink">
-              Орда
+            <div data-hero-line className="-mt-[0.02em] text-ink" style={almaty ? { fontSize: "0.66em", marginTop: "0.04em" } : undefined}>
+              {almaty ? "Алматы" : "Орда"}
             </div>
           </div>
         </div>
@@ -298,9 +309,9 @@ export default function Home() {
             жұмыс фотомен расталғанда ғана жабады.
           </p>
           <div data-corner className="mono col-span-6 text-[12px] leading-relaxed text-muted md:col-span-3">
-            44.85° N · 65.51° E
+            {`${city.center[1].toFixed(2)}° N · ${city.center[0].toFixed(2)}° E`}
             <br />
-            Қызылорда · <span className="text-ink">{clock}</span>
+            {city.name} · <span className="text-ink">{clock}</span>
             <br />
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-qyzyl" /> тірі деректер (тестілік)
@@ -417,7 +428,7 @@ export default function Home() {
               сандармен
             </h2>
             <div className="col-span-12 grid gap-x-[var(--gutter)] gap-y-14 sm:grid-cols-2 md:col-span-8">
-              {FACTS.map((f) => (
+              {(almaty ? FACTS_ALMATY : FACTS).map((f) => (
                 <div key={f.n} data-sweep className="border-t border-line-d pt-5">
                   <div className="display text-[clamp(3.2rem,2rem+4vw,6rem)] tabular-nums">
                     {f.n}
@@ -498,11 +509,11 @@ export default function Home() {
             {qr && <img src={qr} alt="TrashSTOP тұрғын бетіне апаратын QR код" className="h-36 w-36 bg-salt p-2" />}
           </div>
         </div>
-        <div aria-hidden="true" data-no-translate className="display mt-[8vh] text-[clamp(5rem,1rem+18vw,22rem)] leading-[0.8]">
-          Таза орда
+        <div aria-hidden="true" data-no-translate className={`display mt-[8vh] leading-[0.8] ${almaty ? "text-[clamp(3.6rem,0.5rem+13vw,16rem)]" : "text-[clamp(5rem,1rem+18vw,22rem)]"}`}>
+          {almaty ? "Таза Алматы" : "Таза орда"}
         </div>
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-white/30 pt-5 text-[13px]">
-          <span>GovTech Hackathon 2026 · Kyzylorda Hub · 01-кейс</span>
+          <span>GovTech Hackathon 2026 · 1-орын · Kyzylorda Hub</span>
           <span className="mono text-[12px] text-white/85">Демодағы шағымдар, адамдар мен ағаштар тестілік деректер</span>
           <Link href="/public" className="sweep-line font-semibold">
             Ашық деректер

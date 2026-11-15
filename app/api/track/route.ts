@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { rateLimited } from "@/lib/ratelimit";
 import { sync } from "@/lib/store";
 import { CATEGORY } from "@/lib/meta";
+import { withCity } from "@/lib/city-server";
 
 // Өтінішті нөмірі бойынша тексеру — кірусіз, тек жеке мәліметсіз ақпарат (eOtinish логикасы)
-export async function GET(req: Request) {
+async function GET_(req: Request) {
   if (rateLimited(req, "track", 30)) return NextResponse.json({ error: "Тым жиі" }, { status: 429 });
   const code = (new URL(req.url).searchParams.get("code") ?? "").trim().toUpperCase().replace(/\s+/g, "");
   const norm = /^\d+$/.test(code) ? `TS-${code}` : code;
@@ -35,3 +36,5 @@ export async function GET(req: Request) {
     { headers: { "Cache-Control": "no-store" } },
   );
 }
+
+export const GET = withCity(GET_);

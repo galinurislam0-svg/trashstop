@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Search, Loader2, CheckCircle2, Clock3, MapPin, Truck, ShieldCheck } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { APPEAL_STEPS, RESPONSIBLE, appealStage, fmtTime, timeLeft } from "@/lib/meta";
+import { APPEAL_STEPS, appealStage, fmtTime, timeLeft } from "@/lib/meta";
+import { useCityConf } from "@/components/CityProvider";
 
 type Track = {
   code: string;
@@ -25,6 +26,7 @@ type Track = {
 };
 
 export default function TrackPage() {
+  const city = useCityConf();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -126,7 +128,7 @@ export default function TrackPage() {
               </div>
               <div>
                 <dt className="text-[13px] font-semibold text-muted">Жауапты орган</dt>
-                <dd className="font-semibold text-ink">{RESPONSIBLE}</dd>
+                <dd className="font-semibold text-ink">{city.responsible}</dd>
               </div>
               <div>
                 <dt className="text-[13px] font-semibold text-muted">Орындаушы</dt>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Eye, X } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { CitySwitch } from "./CitySwitch";
 
 export type A11y = { fs: 0 | 1 | 2; contrast: boolean; lang: "kk" | "ru" };
 const KEY = "ts-a11y";
@@ -92,6 +93,10 @@ export function A11yPanel() {
                 {c ? t.high : t.normal}
               </button>
             ))}
+          </div>
+          <div className="mt-3 text-[13px] font-semibold text-[#5c5b55]">{a.lang === "ru" ? "Город" : "Қала"}</div>
+          <div className="mt-1.5">
+            <CitySwitch variant="light" ru={a.lang === "ru"} />
           </div>
           <div className="mt-3 text-[13px] font-semibold text-[#5c5b55]">{t.lang}</div>
           <div className="mt-1.5 grid grid-cols-2 gap-1.5">

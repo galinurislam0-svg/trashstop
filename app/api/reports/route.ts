@@ -3,6 +3,7 @@ import { rateLimited } from "@/lib/ratelimit";
 import { AuthError, requireRole } from "@/lib/auth";
 import { z } from "zod";
 import { createReport, mutate } from "@/lib/store";
+import { withCity } from "@/lib/city-server";
 
 const Body = z.object({
   lat: z.number().min(40).max(56),
@@ -30,7 +31,7 @@ const Body = z.object({
     .optional(),
 });
 
-export async function POST(req: Request) {
+async function POST_(req: Request) {
   if (rateLimited(req, "reports", 20)) return NextResponse.json({ error: "Тым жиі сұрау. Бір минуттан кейін қайталаңыз." }, { status: 429 });
   let me;
   try {
@@ -47,3 +48,5 @@ export async function POST(req: Request) {
   const { report, mergedInto } = await mutate(() => createReport({ ...data, reporterId: me.uid }));
   return NextResponse.json({ id: report.id, code: report.code, mergedInto: mergedInto ?? null });
 }
+
+export const POST = withCity(POST_);

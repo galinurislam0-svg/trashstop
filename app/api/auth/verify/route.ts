@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { checkOtp, cookieOpts, encodeSession, normalizePhone, OTP_COOKIE, readOtp, SESSION_COOKIE, SESSION_MAX_AGE, sessionFor } from "@/lib/auth";
 import { rateLimited } from "@/lib/ratelimit";
 import { mutate, upsertCitizen } from "@/lib/store";
+import { withCity } from "@/lib/city-server";
+import { DEFAULT_CITY } from "@/lib/cities";
 
-export async function POST(req: Request) {
+async function POST_(req: Request) {
   if (rateLimited(req, "verify", 10)) return NextResponse.json({ error: "Тым көп әрекет" }, { status: 429 });
   const { phone, code, name } = (await req.json().catch(() => ({}))) as { phone?: string; code?: string; name?: string };
   const p = normalizePhone(phone ?? "");
@@ -16,3 +18,5 @@ export async function POST(req: Request) {
   res.cookies.set(OTP_COOKIE, "", cookieOpts(0));
   return res;
 }
+
+export const POST = withCity(POST_, DEFAULT_CITY);

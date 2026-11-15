@@ -3,9 +3,10 @@ import { AuthError, requireRole } from "@/lib/auth";
 import { addTree, mutate, planCare, updateTree, waterZone } from "@/lib/store";
 import type { CareKind } from "@/lib/meta";
 import type { TreeHealth } from "@/lib/types";
+import { withCity } from "@/lib/city-server";
 
 // Жасыл қор: аймақты суару, ағаш жағдайын тіркеу, күтім тапсырмасын жоспарлау
-export async function POST(req: Request) {
+async function POST_(req: Request) {
   try {
     requireRole(req, ["green", "akimat"]);
   } catch (e) {
@@ -34,3 +35,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
 }
+
+export const POST = withCity(POST_);

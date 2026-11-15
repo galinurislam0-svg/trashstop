@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { rateLimited } from "@/lib/ratelimit";
+import { serverCityConf, withCity } from "@/lib/city-server";
 
 // Координатадан нақты мекенжай (OpenStreetMap Nominatim, резерв — Photon). Кэш + секундына 1 сұрау (OSM ережесі).
 const cache = new Map<string, Addr>();
 let lastCall = 0;
-const UA = "TrashSTOP/1.0 (GovTech Hackathon 2026, Kyzylorda)";
+const UA = "TrashSTOP/1.0 (city cleanliness platform)";
 
 type Addr = { address: string; street: string | null; house: string | null; area: string | null; city: string | null; source: string };
 
@@ -27,7 +28,8 @@ function kzStreet(s: string) {
 }
 
 function compose(street: string | null, house: string | null, area: string | null, city: string | null) {
-  const s = street ? kzStreet(street) : null;
+  // OpenStreetMap-те кейде латын «i» кездеседі: «көшесi» → «көшесі»
+  const s = street ? kzStreet(street).replace(/([а-яәғқңөұүһ])i\b/gi, "$1і") : null;
   const main = s ? (house ? `${s}, ${house}` : s) : area || city || "Белгісіз орын";
   return { address: main, street: s, house, area, city };
 }
@@ -54,9 +56,9 @@ async function photon(lat: number, lng: number): Promise<Addr | null> {
   return { ...compose(p.street ?? null, p.housenumber ?? null, p.district ?? null, p.city ?? null), source: "OpenStreetMap" };
 }
 
-/** Мекенжайды іздеу (тек Қызылорда шегінде): «Әйтеке би 25» → координата */
-const BBOX = { w: 65.4, s: 44.78, e: 65.62, n: 44.92 };
+/** Мекенжайды іздеу (тек таңдалған қала шегінде): «Әйтеке би 25» → координата */
 async function search(q: string) {
+  const BBOX = serverCityConf().bounds;
   const out: { lat: number; lng: number; address: string; area: string | null }[] = [];
   try {
     const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&bbox=${BBOX.w},${BBOX.s},${BBOX.e},${BBOX.n}&limit=6`, {
@@ -94,7 +96,7 @@ async function search(q: string) {
   return out.filter((x, i) => out.findIndex((y) => y.address === x.address) === i).slice(0, 5);
 }
 
-export async function GET(req: Request) {
+async function GET_(req: Request) {
   if (rateLimited(req, "geo", 40)) return NextResponse.json({ error: "Тым жиі" }, { status: 429 });
   const sp = new URL(req.url).searchParams;
   const q = sp.get("q")?.trim();
@@ -122,3 +124,5 @@ export async function GET(req: Request) {
   if (cache.size > 2000) cache.delete(cache.keys().next().value!);
   return NextResponse.json(out, { headers: { "Cache-Control": "public, max-age=86400" } });
 }
+
+export const GET = withCity(GET_);

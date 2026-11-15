@@ -3,7 +3,7 @@
 // 3D ошақ бағандары, бригада көліктері, автоматты айналу.
 import { useEffect, useRef, useState } from "react";
 import type { Map as MLMap, GeoJSONSource, Marker, Popup, StyleSpecification } from "maplibre-gl";
-import { CITY_CENTER } from "@/lib/meta";
+import { activeCity } from "@/lib/city-client";
 
 export interface MapPoint {
   id: string;
@@ -133,7 +133,8 @@ function pinImage(color: string, icon: string) {
 /** Алтыбұрышты торға жинау (≈250 м): 3D ошақ бағандары үшін */
 function hexbin(points: MapPoint[]) {
   const R = 0.0021; // ендік бойынша
-  const k = 1 / Math.cos((44.85 * Math.PI) / 180);
+  const CITY_CENTER = activeCity().center;
+  const k = 1 / Math.cos((CITY_CENTER[1] * Math.PI) / 180);
   const cells = new Map<string, { q: number; r: number; n: number }>();
   for (const p of points) {
     if ((p.weight ?? 1) < 0.5) continue;
@@ -263,8 +264,9 @@ export default function MapView({
       const m = new maplibre.Map({
         container: el.current,
         style: STYLES[theme] as unknown as StyleSpecification,
-        center: CITY_CENTER,
-        zoom,
+        center: activeCity().center,
+        // Шолу масштабы қаланың көлеміне қарай: Алматы үлкен — алысырақтан көрсетеміз (көше деңгейіндегі масштабқа тимейміз)
+        zoom: zoom < 14.5 ? zoom + (activeCity().zoom - 13.2) : zoom,
         pitch,
         bearing: pitch ? -17 : 0,
         maxPitch: 70,

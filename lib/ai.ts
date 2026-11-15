@@ -3,6 +3,7 @@ import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import type { AiResult } from "./types";
+import { serverCity, serverCityConf } from "./city-server";
 
 const MODEL = "claude-opus-5-5";
 
@@ -22,7 +23,7 @@ const TrashSchema = z.object({
 });
 
 // Санаттардың нақты анықтамасы — модель шатаспауы үшін
-const TRASH_GUIDE = `Сен — Қызылорда қаласының тазалық қызметінің сарапшысысың. Фотоны мұқият қарап, тек көрініп тұрған нәрсеге сүйен, ойдан қоспа.
+const TRASH_GUIDE_BODY = `Сен — {CITY} қаласының тазалық қызметінің сарапшысысың. Фотоны мұқият қарап, тек көрініп тұрған нәрсеге сүйен, ойдан қоспа.
 
 1) Алдымен фотода нақты не бар екенін анықта: items — көрінген заттардың қазақша тізімі (3–8 зат, нақты: «қара полиэтилен пакеттер», «пластик бөтелкелер», «ескі диван», «кірпіш сынықтары», «толған жасыл контейнер»).
 
@@ -79,10 +80,16 @@ export type TreeAi = {
 const MONTHS_KK = ["қаңтар", "ақпан", "наурыз", "сәуір", "мамыр", "маусым", "шілде", "тамыз", "қыркүйек", "қазан", "қараша", "желтоқсан"];
 
 /** Ағаштың күйін бағалау нұсқаулығы — маусымды ескереді (күз бен қыста жапырақсыз ағаш қураған емес) */
+/** Қоқыс талдау нұсқаулығы — таңдалған қаланың атымен */
+function trashGuide() {
+  return TRASH_GUIDE_BODY.replace("{CITY}", serverCityConf().name);
+}
+
 function treeGuide(now = new Date()) {
-  const m = new Date(now.getTime() + 5 * 3600e3).getUTCMonth(); // Қызылорда уақыты
+  const m = new Date(now.getTime() + 5 * 3600e3).getUTCMonth(); // Қазақстан уақыты (UTC+5)
+  const city = serverCityConf();
   const cold = m >= 9 || m <= 2; // қазан–наурыз
-  return `Сен — Қызылорда қаласының көгалдандыру сарапшысысың (климаты: шөлейт, ыстық жаз, суық қыс). Бүгін — ${MONTHS_KK[m]} айы. Фотода көрінгенге ғана сүйен, ойдан қоспа.
+  return `Сен — ${city.name} қаласының көгалдандыру сарапшысысың. ${city.climate} Бүгін — ${MONTHS_KK[m]} айы. Фотода көрінгенге ғана сүйен, ойдан қоспа.
 
 1) is_tree — фотода ағаш (немесе бұта/көшет) анық көріне ме. Көрінбесе: is_tree=false, health="good", confidence=0, action="none", comment — «ағашты жақыннан, тұтас түсіріңіз» деген кеңес.
 
@@ -219,7 +226,7 @@ async function geminiJsonOnce<T extends z.ZodType>(gemini: GoogleGenAI, model: s
       model,
       contents: [{ role: "user", parts: geminiParts(content) }],
       config: {
-        systemInstruction: SYSTEM,
+        systemInstruction: system(),
         responseMimeType: "application/json",
         responseJsonSchema: z.toJSONSchema(schema),
         thinkingConfig: thinking(model),
@@ -237,7 +244,7 @@ async function geminiText(prompt: string) {
 }
 async function geminiTextOnce(gemini: GoogleGenAI, model: string, prompt: string) {
   const res = await withTimeout(
-    gemini.models.generateContent({ model, contents: prompt, config: { systemInstruction: SYSTEM, thinkingConfig: thinking(model) } }),
+    gemini.models.generateContent({ model, contents: prompt, config: { systemInstruction: system(), thinkingConfig: thinking(model) } }),
     14_000,
   );
   return (res.text ?? "").trim();
@@ -263,10 +270,13 @@ export type Lang = "kk" | "ru";
 const RU_NOTE = "ЯЗЫК ОТВЕТА — РУССКИЙ. Это указание важнее системного и всех инструкций выше. Все текстовые поля ответа (items, signs, reason, summary, retake_reason, comment) пиши строго на русском языке, ни одного слова по-казахски. Названия улиц и организаций можно оставить как есть.";
 const langBlock = (lang: Lang) => (lang === "ru" ? [{ type: "text" as const, text: RU_NOTE }] : []);
 
-const SYSTEM =
-  "Сен Қызылорда қаласының тазалық қызметіне арналған TrashSTOP жүйесінің көру модулісің. " +
+const SYSTEM_TPL =
+  "Сен {CITY} қаласының тазалық қызметіне арналған TrashSTOP жүйесінің көру модулісің. " +
   "Фотоларды тек тазалық, қоқыс және жасыл екпелер тұрғысынан бағала. Барлық мәтінді қазақ тілінде, қысқа (1 сөйлем) жаз. " +
   "Адамдардың жүзін немесе жеке басын сипаттама.";
+function system() {
+  return SYSTEM_TPL.replace("{CITY}", serverCityConf().name);
+}
 
 /** Алдымен Claude (сапасы жоғары, күндік шектеу жоқ), болмаса — Gemini кілттері */
 async function parse<T extends z.ZodType>(schema: T, content: Anthropic.Beta.Messages.BetaContentBlockParam[]): Promise<z.infer<T>> {
@@ -288,7 +298,7 @@ async function claudeJson<T extends z.ZodType>(schema: T, content: Anthropic.Bet
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     output_config: { effort: "low", format: betaZodOutputFormat(schema) },
-    system: SYSTEM,
+    system: system(),
     messages: [{ role: "user", content }],
   });
   if (res.stop_reason === "refusal" || !res.parsed_output) throw new Error("ЖИ жауап бермеді");
@@ -310,7 +320,7 @@ async function analyzeTrashRaw(photo: string, hint?: string, lang: Lang = "kk"):
         {
           type: "text",
           text:
-            TRASH_GUIDE +
+            trashGuide() +
             (hint === "car" ? "\n\nТұрғын «көліктен тастады» режимін таңдады — көлік пен нөмірге ерекше назар аудар." : "") +
             (hint === "burning" ? "\n\nТұрғын «түтін / өртеу» режимін таңдады — от, түтін, күл бар-жоғына ерекше назар аудар; көрінсе category = burning." : ""),
         },
@@ -391,7 +401,7 @@ export async function weeklySummary(facts: string, lang: Lang = "kk"): Promise<s
         betas: ["server-side-fallback-2026-07-01"],
         fallbacks: "default",
         output_config: { effort: "low" },
-        system: SYSTEM,
+        system: system(),
         messages: [
           {
             role: "user",
@@ -425,6 +435,7 @@ const CACHE_VER = "claude-2";
 function key(...parts: (string | null | undefined)[]) {
   const h = createHash("sha1");
   h.update(CACHE_VER);
+  h.update(serverCity()); // әр қаланың нұсқаулығы мен климаты бөлек
   for (const p of parts) h.update(p ?? "-");
   return h.digest("hex");
 }

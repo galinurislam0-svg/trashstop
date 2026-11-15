@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Radar, Trees, ShieldAlert, LayoutDashboard, Smartphone, HardHat, Eye, LogOut, ScanSearch } from "lucide-react";
 import { LogoMark } from "./Logo";
 import { UserChip, useMe } from "./UserChip";
+import { CitySwitch } from "./CitySwitch";
 
 const ITEMS = [
   { href: "/ops", label: "Оператор", icon: Radar, roles: ["operator", "akimat"] },
@@ -61,9 +62,12 @@ export function Rail() {
     <>
     <MobileNav />
     <nav aria-label="Жүйе бөлімдері" className="no-print fixed inset-y-0 left-0 z-40 hidden w-[68px] flex-col items-center border-r border-line-d bg-ink py-4 lg:flex">
-      <Link href="/" aria-label="TrashSTOP басты бет" className="mb-6">
+      <Link href="/" aria-label="TrashSTOP басты бет" className="mb-3">
         <LogoMark size={32} />
       </Link>
+      <div className="mb-4">
+        <CitySwitch variant="rail" />
+      </div>
       <div className="flex flex-1 flex-col gap-1.5">
         {ITEMS.map((it) => {
           const on = path === it.href;

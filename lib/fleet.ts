@@ -1,7 +1,10 @@
 // Қоқыс көліктерінің GPS деректері.
 // Провайдер интерфейсі: демода — нақты көшелермен жүретін симуляция (OSRM маршруттары),
 // пилотта — мекеменің GPS жүйесі (мыс. Wialon / Omnicomm) API арқылы. Ауыстыру үшін тек провайдер өзгереді.
-import ROUTES from "./truck-routes.json";
+import ROUTES_KZO from "./truck-routes.json";
+import ROUTES_ALA from "./truck-routes-almaty.json";
+import { serverCity } from "./city-server";
+import type { CityId } from "./cities";
 import { distanceM } from "./meta";
 
 export interface Truck {
@@ -29,7 +32,14 @@ export interface FleetProvider {
 }
 
 type Route = { coords: [number, number][]; lengthM: number };
-const R = ROUTES as unknown as Record<string, Route>;
+// Әр қаланың маршруттары (OpenStreetMap көшелері, OSRM арқылы салынған)
+const ROUTES: Record<CityId, Record<string, Route>> = {
+  kyzylorda: ROUTES_KZO as unknown as Record<string, Route>,
+  almaty: ROUTES_ALA as unknown as Record<string, Route>,
+};
+function routesOf(): Record<string, Route> {
+  return ROUTES[serverCity()];
+}
 
 // Көліктердің паспорты (тестілік)
 const FLEET = [
@@ -47,16 +57,17 @@ const STOP_SEC = 35;
 /** Маршрут бойындағы қашықтықтарды бір рет есептейміз */
 const CUM: Record<string, number[]> = {};
 function cum(id: string) {
-  if (CUM[id]) return CUM[id];
-  const c = R[id].coords;
+  const ck = `${serverCity()}:${id}`;
+  if (CUM[ck]) return CUM[ck];
+  const c = routesOf()[id].coords;
   const out = [0];
   for (let i = 1; i < c.length; i++) out.push(out[i - 1] + distanceM({ lat: c[i - 1][1], lng: c[i - 1][0] }, { lat: c[i][1], lng: c[i][0] }));
-  CUM[id] = out;
+  CUM[ck] = out;
   return out;
 }
 
 function pointAt(id: string, d: number) {
-  const c = R[id].coords;
+  const c = routesOf()[id].coords;
   const cs = cum(id);
   const L = cs[cs.length - 1];
   const x = ((d % L) + L) % L;
@@ -116,7 +127,7 @@ export const SimulatedProvider: FleetProvider = {
   name: "GPS симуляциясы (OpenStreetMap көшелері)",
   live: false,
   async list(now = Date.now()) {
-    return FLEET.filter((f) => R[f.id]).map((f) => simulate(f, now));
+    return FLEET.filter((f) => routesOf()[f.id]).map((f) => simulate(f, now));
   },
 };
 
@@ -131,7 +142,7 @@ export function provider(): FleetProvider {
 
 /** Көліктің маршруты бойынша нүктеге дейінгі қашықтық (алға қарай) */
 function aheadDistance(f: (typeof FLEET)[number], truckD: number, target: { lat: number; lng: number }) {
-  const c = R[f.id].coords;
+  const c = routesOf()[f.id].coords;
   const cs = cum(f.id);
   const L = cs[cs.length - 1];
   let best = { idx: -1, gap: Infinity };
@@ -147,7 +158,7 @@ function aheadDistance(f: (typeof FLEET)[number], truckD: number, target: { lat:
 
 /** Тұрғынның орнына ең жақын келетін көлік және келу уақыты (минут) */
 export function etaFor(target: { lat: number; lng: number }, now = Date.now()) {
-  const res = FLEET.filter((f) => R[f.id]).map((f) => {
+  const res = FLEET.filter((f) => routesOf()[f.id]).map((f) => {
     const v = (f.v * 1000) / 3600;
     const blockT = STOP_EVERY_M / v + STOP_SEC;
     const t = now / 1000 + f.offset;

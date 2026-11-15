@@ -1,7 +1,9 @@
 // Сервердегі жады-қойма (демо үшін). Жоба өндіріске шыққанда Supabase/PostgreSQL-ге ауыстырылады.
 import type { AiResult, Category, CityState, Family, FamTask, Report, Source, TreeHealth } from "./types";
 import { FAM_MAX_TOPUP, FAM_TEMPLATES, type FamTemplate } from "./family";
-import { buildSeed, buildUsers, DISTRICTS } from "./seed";
+import { buildSeed, buildUsers, districtsFor } from "./seed";
+import { serverCity, runInCity } from "./city-server";
+import { CITIES, CITY_IDS, DEFAULT_CITY, inBounds, type CityId } from "./cities";
 import type { Role, User } from "./auth";
 import { CARE_KINDS, CATEGORY, distanceM, type CareKind } from "./meta";
 
@@ -9,16 +11,24 @@ import fs from "node:fs";
 import { pool, ready } from "./db";
 import path from "node:path";
 
-const g = globalThis as unknown as { __trashstop?: CityState; __trashstopSeq?: number; __tsSave?: ReturnType<typeof setTimeout>; __tsVersion?: number };
+// Әр қаланың күйі бөлек «слотта» сақталады: қалалардың деректері ешқашан араласпайды.
+type Slot = { state?: CityState; seq?: number; version?: number; save?: ReturnType<typeof setTimeout> };
+const g = globalThis as unknown as { __tsCities?: Partial<Record<CityId, Slot>> };
+function slot(city: CityId = serverCity()): Slot {
+  g.__tsCities ??= {};
+  return (g.__tsCities[city] ??= {});
+}
 
 // Деректер дискіге сақталады: сервер қайта іске қосылса да шағымдар мен фотолар жоғалмайды.
 // Vercel-де жобаның папкасы тек оқуға арналған, сондықтан /tmp қолданылады.
-const DATA_FILE =
-  process.env.DATA_FILE || (process.env.VERCEL ? "/tmp/trashstop-state.json" : path.join(process.cwd(), ".data", "state.json"));
+function dataFile(city: CityId) {
+  const base = process.env.DATA_FILE || (process.env.VERCEL ? "/tmp/trashstop-state.json" : path.join(process.cwd(), ".data", "state.json"));
+  return city === DEFAULT_CITY ? base : base.replace(/\.json$/, `-${city}.json`);
+}
 
-function load(): { state: CityState; seq: number } | null {
+function load(city: CityId): { state: CityState; seq: number } | null {
   try {
-    const raw = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+    const raw = JSON.parse(fs.readFileSync(dataFile(city), "utf8"));
     if (raw?.state?.reports && raw?.state?.workers) return raw;
   } catch {
     /* файл жоқ немесе бүлінген — жаңадан бастаймыз */
@@ -29,13 +39,16 @@ function load(): { state: CityState; seq: number } | null {
 /** Өзгерістен кейін 400 мс күтіп, дискіге бір рет жазамыз (атомарлы: уақытша файл → ауыстыру) */
 export function persist() {
   if (pool) return; // дерекқор режимінде сақтауды mutate() жасайды
-  if (g.__tsSave) clearTimeout(g.__tsSave);
-  g.__tsSave = setTimeout(() => {
+  const city = serverCity();
+  const sl = slot(city);
+  if (sl.save) clearTimeout(sl.save);
+  sl.save = setTimeout(() => {
     try {
-      fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-      const tmp = `${DATA_FILE}.${process.pid}.tmp`;
-      fs.writeFileSync(tmp, JSON.stringify({ state: g.__trashstop, seq: g.__trashstopSeq }));
-      fs.renameSync(tmp, DATA_FILE);
+      const file = dataFile(city);
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      const tmp = `${file}.${process.pid}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify({ state: sl.state, seq: sl.seq }));
+      fs.renameSync(tmp, file);
     } catch (e) {
       console.error("[store] сақтау қатесі:", (e as Error).message);
     }
@@ -43,14 +56,23 @@ export function persist() {
 }
 
 export function getState(): CityState {
-  if (!g.__trashstop) {
-    const saved = load();
-    g.__trashstop = saved?.state ?? buildSeed();
-    g.__trashstopSeq = saved?.seq ?? 1100;
+  const city = serverCity();
+  const sl = slot(city);
+  if (!sl.state) {
+    const saved = load(city);
+    sl.state = saved?.state ?? buildSeed(Date.now(), city);
+    sl.seq = saved?.seq ?? CITIES[city].codeBase + 100;
   }
-  ensureUsers(g.__trashstop);
-  g.__trashstop.now = Date.now();
-  return g.__trashstop;
+  ensureUsers(sl.state);
+  sl.state.now = Date.now();
+  return sl.state;
+}
+
+/** Шағым нөмірінің есептегіші (қала бойынша) */
+function nextSeq() {
+  const sl = slot();
+  sl.seq = (sl.seq ?? CITIES[serverCity()].codeBase + 100) + 1;
+  return sl.seq;
 }
 
 /** Ескі сақталған күйде аккаунттар болмаса — қосамыз (миграция) */
@@ -58,11 +80,12 @@ function ensureUsers(s: CityState) {
   if (!s.users || !s.users.length) s.users = buildUsers(s.workers, s.brigades);
 }
 
+// Аккаунттар ортақ: олар әрқашан негізгі қаланың күйінде сақталады (auth маршруттары сол қалада жұмыс істейді)
 export function findUserByLogin(login: string): User | undefined {
-  return getState().users!.find((u) => u.login === login.trim().toLowerCase());
+  return runInCity(DEFAULT_CITY, () => getState().users!.find((u) => u.login === login.trim().toLowerCase()));
 }
 export function findUserById(id: string): User | undefined {
-  return getState().users!.find((u) => u.id === id);
+  return runInCity(DEFAULT_CITY, () => getState().users!.find((u) => u.id === id));
 }
 /** Телефон бойынша тұрғынды табу немесе жаңасын тіркеу */
 export function upsertCitizen(phone: string, name?: string): User {
@@ -77,15 +100,17 @@ export function upsertCitizen(phone: string, name?: string): User {
 }
 
 export function resetState() {
-  g.__trashstop = buildSeed();
-  g.__trashstopSeq = 1100;
+  const sl = slot();
+  sl.state = buildSeed(Date.now(), serverCity());
+  sl.seq = CITIES[serverCity()].codeBase + 100;
   persist();
 }
 
 function nearestDistrict(lat: number, lng: number) {
-  let best = DISTRICTS[0];
+  const ds = districtsFor(serverCity());
+  let best = ds[0];
   let bd = Infinity;
-  for (const d of DISTRICTS) {
+  for (const d of ds) {
     const dist = distanceM({ lat, lng }, d);
     if (dist < bd) {
       bd = dist;
@@ -138,10 +163,10 @@ export function createReport(input: {
   }
 
   const { priority, reason } = scorePriority(s, cat, input.ai ?? null, input.lat, input.lng);
-  g.__trashstopSeq = (g.__trashstopSeq ?? 1100) + 1;
+  const seqNo = nextSeq();
   const report: Report = {
     id: `r${now}`,
-    code: `TS-${g.__trashstopSeq}`,
+    code: `TS-${seqNo}`,
     createdAt: now,
     category: cat,
     status: "new",
@@ -277,7 +302,8 @@ export function thankWorker(workerId: string, stars: number) {
 /** Картада жоқ ағашты тіркеу (фото + GPS бойынша). Аймақ, күтетін мердігер, суару — ең жақын ағаштан */
 export function addTree(input: { lat: number; lng: number; species?: string; health: TreeHealth; note?: string }) {
   const s = getState();
-  if (!(input.lat > 44.78 && input.lat < 44.92 && input.lng > 65.4 && input.lng < 65.62)) throw new Error("Орын Қызылорда шегінен тыс");
+  const cc = CITIES[serverCity()];
+  if (!inBounds(cc, input)) throw new Error(`Орын ${cc.name} шегінен тыс`);
   const nearest = [...s.trees].sort((a, b) => distanceM(a, input) - distanceM(b, input))[0];
   const near = nearest && distanceM(nearest, input) < 600 ? nearest : null; // алыс ағаштан мәлімет көшірмейміз
   const max = s.trees.reduce((m, t) => Math.max(m, Number(t.id.slice(1)) || 0), 0);
@@ -344,26 +370,35 @@ export function waterZone(zone: string) {
 
 // ───────── Дерекқор режимі (Vercel: бірнеше сервер даналары бір күйді көреді) ─────────
 
-/** Оқу алдында: дерекқордағы нұсқа өзгерсе, күйді қайта жүктейміз */
+/** Оқу алдында: дерекқордағы нұсқа өзгерсе, күйді қайта жүктейміз (әр қала — өз жолы) */
 export async function sync(): Promise<CityState> {
   if (!pool) return getState();
   await ready();
-  const v = await pool.query<{ version: string }>("SELECT version FROM ts_state WHERE id = 1");
+  const city = serverCity();
+  const id = CITIES[city].dbId;
+  const sl = slot(city);
+  const v = await pool.query<{ version: string }>("SELECT version FROM ts_state WHERE id = $1", [id]);
   if (!v.rowCount) {
-    const seed = buildSeed();
-    await pool.query("INSERT INTO ts_state (id, doc, seq, version) VALUES (1, $1, 1100, 1) ON CONFLICT (id) DO NOTHING", [JSON.stringify(seed)]);
+    const seed = buildSeed(Date.now(), city);
+    await pool.query("INSERT INTO ts_state (id, doc, seq, version) VALUES ($1, $2, $3, 1) ON CONFLICT (id) DO NOTHING", [id, JSON.stringify(seed), CITIES[city].codeBase + 100]);
     return sync();
   }
   const version = Number(v.rows[0].version);
-  if (version !== g.__tsVersion || !g.__trashstop) {
-    const r = await pool.query<{ doc: CityState; seq: number; version: string }>("SELECT doc, seq, version FROM ts_state WHERE id = 1");
-    g.__trashstop = r.rows[0].doc;
-    g.__trashstopSeq = r.rows[0].seq;
-    g.__tsVersion = Number(r.rows[0].version);
+  if (version !== sl.version || !sl.state) {
+    const r = await pool.query<{ doc: CityState; seq: number; version: string }>("SELECT doc, seq, version FROM ts_state WHERE id = $1", [id]);
+    sl.state = r.rows[0].doc;
+    sl.seq = r.rows[0].seq;
+    sl.version = Number(r.rows[0].version);
   }
-  ensureUsers(g.__trashstop!);
-  g.__trashstop!.now = Date.now();
-  return g.__trashstop!;
+  ensureUsers(sl.state!);
+  sl.state!.now = Date.now();
+  return sl.state!;
+}
+
+/** Фото кілті: негізгі қалада бұрынғыдай, басқа қалаларда — қала атауымен (кілттер қақтығыспауы үшін) */
+function photoKey(base: string) {
+  const city = serverCity();
+  return city === DEFAULT_CITY ? base : `${city}:${base}`;
 }
 
 /** Фотоларды бөлек кестеге шығарып, құжатта тек сілтеме қалдырамыз */
@@ -373,7 +408,7 @@ async function offloadPhotos(client: import("pg").PoolClient, s: CityState) {
       for (const k of ["beforePhoto", "afterPhoto"] as const) {
         const v = t[k];
         if (v && v.startsWith("data:")) {
-          const key = `fam:${t.id}:${k}`;
+          const key = photoKey(`fam:${t.id}:${k}`);
           await client.query("INSERT INTO ts_photo (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data", [key, v]);
           t[k] = `db:${key}`;
         }
@@ -382,7 +417,7 @@ async function offloadPhotos(client: import("pg").PoolClient, s: CityState) {
     for (const k of ["photo", "afterPhoto"] as const) {
       const v = r[k];
       if (v && v.startsWith("data:")) {
-        const key = `${r.id}:${k}`;
+        const key = photoKey(`${r.id}:${k}`);
         await client.query("INSERT INTO ts_photo (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data", [key, v]);
         r[k] = `db:${key}`;
       }
@@ -400,26 +435,30 @@ export async function mutate<T>(fn: () => T): Promise<T> {
   }
   await ready();
   await sync();
+  const city = serverCity();
+  const id = CITIES[city].dbId;
+  const sl = slot(city);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const r = await client.query<{ doc: CityState; seq: number; version: string }>("SELECT doc, seq, version FROM ts_state WHERE id = 1 FOR UPDATE");
-    g.__trashstop = r.rows[0].doc;
-    g.__trashstopSeq = r.rows[0].seq;
-    ensureUsers(g.__trashstop);
-    g.__trashstop.now = Date.now();
+    const r = await client.query<{ doc: CityState; seq: number; version: string }>("SELECT doc, seq, version FROM ts_state WHERE id = $1 FOR UPDATE", [id]);
+    sl.state = r.rows[0].doc;
+    sl.seq = r.rows[0].seq;
+    ensureUsers(sl.state);
+    sl.state.now = Date.now();
     const out = fn();
-    await offloadPhotos(client, g.__trashstop);
-    const u = await client.query<{ version: string }>("UPDATE ts_state SET doc = $1, seq = $2, version = version + 1 WHERE id = 1 RETURNING version", [
-      JSON.stringify(g.__trashstop),
-      g.__trashstopSeq ?? 1100,
+    await offloadPhotos(client, sl.state);
+    const u = await client.query<{ version: string }>("UPDATE ts_state SET doc = $1, seq = $2, version = version + 1 WHERE id = $3 RETURNING version", [
+      JSON.stringify(sl.state),
+      sl.seq ?? CITIES[city].codeBase + 100,
+      id,
     ]);
     await client.query("COMMIT");
-    g.__tsVersion = Number(u.rows[0].version);
+    sl.version = Number(u.rows[0].version);
     return out;
   } catch (e) {
     await client.query("ROLLBACK").catch(() => {});
-    g.__tsVersion = undefined; // келесі оқуда қайта жүктейміз
+    sl.version = undefined; // келесі оқуда қайта жүктейміз
     throw e;
   } finally {
     client.release();
@@ -438,12 +477,20 @@ export async function getPhoto(id: string, which: "photo" | "afterPhoto"): Promi
   return v;
 }
 
+/** Ағымдағы қаланың демо деректерін қайта жасау */
 export async function resetAll() {
   if (!pool) return resetState();
+  const city = serverCity();
   await mutate(() => {
-    g.__trashstop = buildSeed();
-    g.__trashstopSeq = 1100;
+    const sl = slot(city);
+    sl.state = buildSeed(Date.now(), city);
+    sl.seq = CITIES[city].codeBase + 100;
   });
+}
+
+/** Барлық қаланың демо деректерін қайта жасау */
+export async function resetEveryCity() {
+  for (const c of CITY_IDS) await runInCity(c, () => resetAll());
 }
 
 

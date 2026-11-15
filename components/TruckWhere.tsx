@@ -5,11 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, BellRing, Loader2, MapPin, Radio, Truck } from "lucide-react";
 import { getGeoAcc, inCity, reverseGeocode, useFleet } from "@/lib/client";
 import type { Vehicle } from "./MapView";
+import { activeCity } from "@/lib/city-client";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
 // Тұрғын қаладан тыс болса — демо нүкте (Әйтеке би көшесі маңы)
-const DEMO_POINT = { lat: 44.8487, lng: 65.5023 };
 const NOTIFY_MIN = 5;
 
 type Eta = { truckId: string; name: string; etaMin: number; gapM: number; point: { lat: number; lng: number } } | null;
@@ -48,7 +48,7 @@ export function TruckWhere() {
     let off = false;
     getGeoAcc(6000).then((g) => {
       if (off) return;
-      const p = g && inCity(g) ? { lat: g.lat, lng: g.lng, demo: false } : { ...DEMO_POINT, demo: true };
+      const p = g && inCity(g) ? { lat: g.lat, lng: g.lng, demo: false } : { ...activeCity().demoPoint, demo: true };
       setMe(p);
       reverseGeocode(p.lat, p.lng).then((a) => !off && a?.street && setStreet(a.street));
     });

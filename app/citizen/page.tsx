@@ -9,8 +9,11 @@ import { Logo } from "@/components/Logo";
 import { TruckWhere } from "@/components/TruckWhere";
 import { Avatar, PhotoBox, Stars, StatusPill } from "@/components/ui";
 import { approxAddress, compressImage, getBestGeo, inCity, post, readExifGps, reverseGeocode, searchAddress, useCity, type GeoAddress } from "@/lib/client";
-import { CITY_CENTER, CATEGORY, HAZARD, LEGAL_TERM, RESPONSIBLE, VOLUME, fmtTime, timeAgo } from "@/lib/meta";
+import { CATEGORY, HAZARD, LEGAL_TERM, VOLUME, fmtTime, timeAgo } from "@/lib/meta";
+import { useCityConf } from "@/components/CityProvider";
+import { activeCity } from "@/lib/city-client";
 import type { AiResult, Category, Report } from "@/lib/types";
+import { CitySwitch } from "@/components/CitySwitch";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -38,6 +41,7 @@ function saveMine(ids: string[]) {
 }
 
 export default function CitizenPage() {
+  const city = useCityConf();
   const { state, refresh } = useCity(3000);
   const [tab, setTab] = useState<"report" | "mine" | "truck" | "thanks">("report");
   const [step, setStep] = useState<Step>("home");
@@ -131,7 +135,7 @@ export default function CitizenPage() {
         lookup(exif!);
       } else {
         // Әзірге қала орталығы, GPS табылғанда нақты нүктеге ауысады
-        setPos({ lat: CITY_CENTER[1], lng: CITY_CENTER[0] });
+        setPos({ lat: activeCity().center[1], lng: activeCity().center[0] });
         setGpsReal(false);
         locate();
       }
@@ -153,7 +157,7 @@ export default function CitizenPage() {
       const res = await post<{ id: string; code: string; mergedInto: string | null }>("/api/reports", {
         lat: pos.lat,
         lng: pos.lng,
-        address: addr?.address ?? (locInfo.src === "none" || locInfo.src === "locating" ? "Қызылорда (орны нақтыланбаған)" : approxAddress(pos.lat, pos.lng)),
+        address: addr?.address ?? (locInfo.src === "none" || locInfo.src === "locating" ? `${city.name} (орны нақтыланбаған)` : approxAddress(pos.lat, pos.lng)),
         description: desc,
         category,
         photo,
@@ -193,9 +197,10 @@ export default function CitizenPage() {
             <Logo light sub="Тұрғын" />
           </span>
           <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1.5 rounded-full bg-[#fbfaf7] px-3 py-1.5 text-xs font-bold text-qyzyl shadow-sm">
-              <Award size={14} /> {points} ұпай
+            <div className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#fbfaf7] px-2.5 py-1.5 text-xs font-bold text-qyzyl shadow-sm">
+              <Award size={14} /> {points}<span className="hidden min-[400px]:inline"> ұпай</span>
             </div>
+            <CitySwitch variant="light" compact />
             <span className="in-frame-hide">
               <UserChip light compact />
             </span>
@@ -381,7 +386,7 @@ export default function CitizenPage() {
                             <div className={`text-[16px] font-bold leading-snug text-ink transition-opacity ${addrBusy ? "opacity-50" : ""}`}>
                               {addr?.address ?? (locInfo.src === "locating" ? "Орын анықталуда…" : locInfo.src === "none" ? "Орын әлі көрсетілмеді" : approxAddress(pos.lat, pos.lng))}
                             </div>
-                            <div className="mt-0.5 text-[12px] text-stone-500">{[addr?.area, addr?.city ?? "Қызылорда"].filter(Boolean).join(" · ")}</div>
+                            <div className="mt-0.5 text-[12px] text-stone-500">{[addr?.area, addr?.city ?? city.name].filter(Boolean).join(" · ")}</div>
                           </>
                         )}
                       </div>
@@ -418,7 +423,7 @@ export default function CitizenPage() {
                     code={sent.code}
                     merged={!!sent.mergedInto}
                     category={category}
-                    address={addr?.address ?? (locInfo.src === "none" || locInfo.src === "locating" ? "Қызылорда (орны нақтыланбаған)" : pos ? approxAddress(pos.lat, pos.lng) : "")}
+                    address={addr?.address ?? (locInfo.src === "none" || locInfo.src === "locating" ? `${city.name} (орны нақтыланбаған)` : pos ? approxAddress(pos.lat, pos.lng) : "")}
                   />
                   <div className="mx-auto mt-4 flex w-fit items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700">
                     <Award size={16} /> +10 ұпай · «Таза азамат»
@@ -503,6 +508,7 @@ function FireAlert() {
 
 /** Орын: қайдан алынды, қаншалық дәл, және оны түзету жолдары (іздеу, қайта анықтау, карта) */
 function LocationBar({ info, onRelocate, onPick }: { info: LocInfo; onRelocate: () => void; onPick: (p: { lat: number; lng: number }) => void }) {
+  const city = useCityConf();
   const [q, setQ] = useState("");
   const [res, setRes] = useState<{ lat: number; lng: number; address: string; area: string | null }[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -524,7 +530,7 @@ function LocationBar({ info, onRelocate, onPick }: { info: LocInfo; onRelocate: 
               : info.why === "denied"
                 ? "Орынға рұқсат берілмеді"
                 : info.why === "outside"
-                  ? "Сіз Қызылордадан тыс жердесіз"
+                  ? `Сіз ${city.abl} тыс жердесіз`
                   : "GPS сигналы табылмады";
 
   async function find(e: React.FormEvent) {
@@ -833,6 +839,7 @@ function Stepper({ current }: { current: number }) {
 
 /** Ресми түбіртек: тіркеу нөмірі, жауапты орган, мерзім, бақылау QR коды */
 function Receipt({ code, merged, category, address }: { code: string; merged: boolean; category: Category; address: string }) {
+  const city = useCityConf();
   const [qr, setQr] = useState("");
   const now = useMemo(() => Date.now(), []);
   useEffect(() => {
@@ -853,7 +860,7 @@ function Receipt({ code, merged, category, address }: { code: string; merged: bo
           ["Тіркелген уақыты", fmtTime(now)],
           ["Санаты", CATEGORY[category].label],
           ["Мекенжайы", address],
-          ["Жауапты орган", RESPONSIBLE],
+          ["Жауапты орган", city.responsible],
           ["Орындау мерзімі", `${sla} сағатқа дейін`],
         ].map(([k, v]) => (
           <div key={k} className="flex justify-between gap-4 py-2.5">

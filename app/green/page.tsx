@@ -6,6 +6,7 @@ import { Rail } from "@/components/Rail";
 import { Logo } from "@/components/Logo";
 import { TestDataBadge } from "@/components/ui";
 import { compressImage, getBestGeo, inCity, post, readExifGps, useCity, useHeaderBottom } from "@/lib/client";
+import { activeCity } from "@/lib/city-client";
 import { CARE_KINDS, HEALTH, distanceM, kzWeekday, type CareKind } from "@/lib/meta";
 import type { Tree, TreeHealth } from "@/lib/types";
 import type { TreeAi } from "@/lib/ai";
@@ -46,7 +47,7 @@ export default function GreenPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/weather")
+    fetch(`/api/weather?city=${activeCity().id}`)
       .then((r) => r.json())
       .then(setWeather)
       .catch(() => {});
@@ -86,7 +87,7 @@ export default function GreenPage() {
   const zones = useMemo(() => {
     const m = new Map<string, Tree[]>();
     trees.forEach((t) => m.set(t.zone, [...(m.get(t.zone) ?? []), t]));
-    const depot = { lat: 44.852, lng: 65.512 };
+    const depot = activeCity().depot;
     return [...m.entries()]
       .map(([name, ts]) => {
         const lat = ts.reduce((a, t) => a + t.lat, 0) / ts.length;
@@ -271,7 +272,7 @@ export default function GreenPage() {
             </button>
           </div>
           <div className="mt-1 text-[11px] text-stone-500">
-            {summer ? "Демо: шілдедегі +40° аптап" : weather?.live ? `Қызылорда, нақты болжам (Open-Meteo) · қазір ${Math.round(weather.current)}°` : "Болжам жүктелуде…"}
+            {summer ? "Демо: шілдедегі +40° аптап" : weather?.live ? `${activeCity().name}, нақты болжам (Open-Meteo) · қазір ${Math.round(weather.current)}°` : "Болжам жүктелуде…"}
           </div>
           {todayPlan && (
             <div className="mt-3 flex items-center gap-3 rounded-[4px] p-3" style={{ background: `${todayPlan.color}1a` }}>

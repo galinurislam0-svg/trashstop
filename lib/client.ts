@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CityState } from "./types";
+import { activeCity } from "./city-client";
+import { inBounds } from "./cities";
 import type { Truck } from "./fleet";
 
 export type ClientState = CityState & { ai: boolean };
@@ -113,16 +115,20 @@ export function getGeo(timeout = 6000): Promise<{ lat: number; lng: number } | n
   });
 }
 
-const STREETS = ["Әйтеке би к-сі", "Жібек жолы к-сі", "Абай даңғылы", "Қорқыт Ата к-сі", "Тоқмағамбетов к-сі", "Желтоқсан к-сі", "Қайнарбаев к-сі"];
+const STREETS: Record<string, string[]> = {
+  kyzylorda: ["Әйтеке би к-сі", "Жібек жолы к-сі", "Абай даңғылы", "Қорқыт Ата к-сі", "Тоқмағамбетов к-сі", "Желтоқсан к-сі", "Қайнарбаев к-сі"],
+  almaty: ["Абай даңғылы", "Төле би к-сі", "Сәтбаев к-сі", "Жібек жолы к-сі", "Райымбек даңғылы", "Әл-Фараби даңғылы", "Сейфуллин даңғылы"],
+};
 /** Жуық мекенжай (сыртқы сервиске координата жібермей) */
 export function approxAddress(lat: number, lng: number) {
-  const i = Math.abs(Math.floor(lat * 1000 + lng * 1000)) % STREETS.length;
-  return `${STREETS[i]} маңы`;
+  const list = STREETS[activeCity().id] ?? STREETS.kyzylorda;
+  const i = Math.abs(Math.floor(lat * 1000 + lng * 1000)) % list.length;
+  return `${list[i]} маңы`;
 }
 
-/** Қызылорда шегінде бе? Болмаса — демо нүкте (қала орталығы маңы) */
+/** Таңдалған қаланың шегінде ме? Болмаса — демо нүкте (қала орталығы маңы) */
 export function inCity(p: { lat: number; lng: number } | null) {
-  return !!p && p.lat > 44.78 && p.lat < 44.92 && p.lng > 65.4 && p.lng < 65.62;
+  return inBounds(activeCity(), p);
 }
 
 /** GPS дәлдігімен бірге (метр) */
@@ -169,7 +175,7 @@ export function getBestGeo(maxMs = 7000): Promise<GeoFix> {
 
 export async function searchAddress(q: string): Promise<{ lat: number; lng: number; address: string; area: string | null }[]> {
   try {
-    const r = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+    const r = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&city=${activeCity().id}`);
     return r.ok ? (await r.json()).results ?? [] : [];
   } catch {
     return [];

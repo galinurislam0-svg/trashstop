@@ -3,12 +3,13 @@ import { AuthError, requireRole } from "@/lib/auth";
 import { rateLimited } from "@/lib/ratelimit";
 import { familyAct, familyView, getFamilyPhoto, mutate, sync } from "@/lib/store";
 import { verifyClean } from "@/lib/ai";
+import { withCity } from "@/lib/city-server";
 
 export const maxDuration = 60;
 // «Таза ұрпақ»: тек ата-ана (тұрғын аккаунты) өз отбасын көреді және басқарады. Демо жүргізуші (әкімдік) — көрсету үшін.
 const ROLES = ["citizen", "akimat"] as const;
 
-export async function GET(req: Request) {
+async function GET_(req: Request) {
   try {
     const me = requireRole(req, [...ROLES]);
     await sync();
@@ -19,7 +20,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function POST_(req: Request) {
   if (rateLimited(req, "family", 40)) return NextResponse.json({ error: "Тым жиі сұрау" }, { status: 429 });
   let me;
   try {
@@ -49,3 +50,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
 }
+
+export const GET = withCity(GET_);
+export const POST = withCity(POST_);

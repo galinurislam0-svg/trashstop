@@ -16,6 +16,7 @@ const STATUS_LABEL: Record<string, string> = { new: "жаңа", assigned: "та�
 
 import type { MapPoint, Vehicle } from "@/components/MapView";
 import { HEALTH, kzWeekday } from "@/lib/meta";
+import { activeCity } from "@/lib/city-client";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -624,7 +625,7 @@ export default function OpsPage() {
       {/* ⛶ Презентация экраны */}
       {present && (
         <div className="pointer-events-none absolute bottom-8 left-8 z-30 max-w-[620px]">
-          <div className="mono text-[13px] text-mist">Қызылорда · тірі режим · {new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</div>
+          <div className="mono text-[13px] text-mist">{activeCity().name} · тірі режим · {new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</div>
           <div className="display mt-2 text-[clamp(3rem,6vw,6rem)] leading-[0.9] text-salt">
             Қызыл <span className="text-qyzyl">{counts.active}</span>
             <br />

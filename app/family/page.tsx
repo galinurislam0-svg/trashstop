@@ -10,6 +10,7 @@ import { UserChip } from "@/components/UserChip";
 import { compressImage, getBestGeo, post } from "@/lib/client";
 import { FAM_LEVEL, FAM_SAFETY, FAM_TEMPLATES, type FamTemplate } from "@/lib/family";
 import type { Family, FamTask } from "@/lib/types";
+import { CitySwitch } from "@/components/CitySwitch";
 
 const fmt = (n: number) => `${n.toLocaleString("ru-RU").replace(/,/g, " ")} ₸`;
 
@@ -57,8 +58,11 @@ export default function FamilyPage() {
             <span className="in-frame-hide">
               <Logo light sub="Таза ұрпақ" />
             </span>
-            <span className="in-frame-hide">
-              <UserChip light compact />
+            <span className="flex items-center gap-1.5">
+              <CitySwitch variant="light" compact />
+              <span className="in-frame-hide">
+                <UserChip light compact />
+              </span>
             </span>
           </header>
 

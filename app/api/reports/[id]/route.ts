@@ -5,8 +5,9 @@ import { verifyClean } from "@/lib/ai";
 
 export const maxDuration = 60;
 import { AuthError, requireRole, type Role } from "@/lib/auth";
+import { withCity } from "@/lib/city-server";
 
-export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+async function GET_(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     requireRole(req, ["operator", "akimat"]);
   } catch (e) {
@@ -31,7 +32,7 @@ const WHO: Record<string, Role[]> = {
   rate: ["citizen", "akimat", "operator", "worker", "inspector", "green"],
 };
 
-export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+async function POST_(req: Request, ctx: { params: Promise<{ id: string }> }) {
   if (rateLimited(req, "act", 60)) return NextResponse.json({ error: "Тым жиі сұрау. Бір минуттан кейін қайталаңыз." }, { status: 429 });
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -70,3 +71,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
 }
+
+export const GET = withCity(GET_);
+export const POST = withCity(POST_);

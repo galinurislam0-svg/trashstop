@@ -7,12 +7,14 @@ const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 import QRCode from "qrcode";
 import { Logo } from "@/components/Logo";
 import { CityFeed } from "@/components/CityFeed";
+import { useCityConf } from "@/components/CityProvider";
 import { DEMO_CREDITS } from "@/lib/demo-photos";
 import { Avatar, Stars, TestDataBadge } from "@/components/ui";
 import { useCity } from "@/lib/client";
 import { CATEGORY, isOverdue, timeAgo } from "@/lib/meta";
 
 export default function PublicPage() {
+  const city = useCityConf();
   const { state } = useCity(6000);
   const [qr, setQr] = useState("");
   useEffect(() => {
@@ -109,7 +111,7 @@ export default function PublicPage() {
 
         <details className="mt-10 rounded-[12px] bg-white p-4 text-[13px] text-stone-500 shadow-sm">
           <summary className="cursor-pointer font-semibold text-stone-700">Тестілік фотолардың авторлары мен лицензиялары</summary>
-          <p className="mt-2">Демо деректердегі фотолар Қызылордада түсірілмеген: олар Wikimedia Commons-тан ашық лицензиямен алынған, «дейін» мен «кейін» — әр түрлі жерлер. Нақты пилотта тек тұрғындар мен тазалықшылардың өз фотолары шығады.</p>
+          <p className="mt-2">{`Демо деректердегі фотолар ${city.loc} түсірілмеген: олар Wikimedia Commons-тан ашық лицензиямен алынған, «дейін» мен «кейін» — әр түрлі жерлер. Нақты пилотта тек тұрғындар мен тазалықшылардың өз фотолары шығады.`}</p>
           <ul className="mt-2 space-y-1">
             {DEMO_CREDITS.map((c) => (
               <li key={c.file}>

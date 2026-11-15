@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { FileDown, Sparkles, Loader2, Trophy, Clock3, CheckCircle2, AlertTriangle, Smile, Timer, Heart, Radio, Sprout } from "lucide-react";
 import Link from "next/link";
+import { useCityConf } from "@/components/CityProvider";
 import { Rail } from "@/components/Rail";
 import { Logo } from "@/components/Logo";
 import { Avatar, Stars, TestDataBadge } from "@/components/ui";
@@ -15,6 +16,7 @@ const C_IN = "#3B82F6";
 const C_OUT = "#0EA371";
 
 export default function DashboardPage() {
+  const city = useCityConf();
   const { state } = useCity(5000);
   const fleet = useFleet(10000);
   // 🌳 Күтімді қажет ететін нысандар (жасыл қор)
@@ -186,7 +188,7 @@ export default function DashboardPage() {
 
         <div className="mt-2 hidden print:block">
           <h2 className="text-2xl font-bold">TrashSTOP: апталық есеп</h2>
-          <div className="text-sm" suppressHydrationWarning>Қызылорда қаласы · {new Date().toLocaleDateString("kk-KZ")} · тестілік деректер</div>
+          <div className="text-sm" suppressHydrationWarning>{`${city.name} қаласы · ${new Date().toLocaleDateString("kk-KZ")} · тестілік деректер`}</div>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -474,14 +476,23 @@ function Economy({ savedH, merged }: { savedH: number; merged: number }) {
 
 /** Енгізу жоспары: не керек, қанша тұрады, қандай ретпен */
 function Rollout() {
-  const steps = [
-    { t: "1-ай", h: "Пилот: бір аудан", d: "2 бригада, 1 оператор. Жабдық керек емес — тек телефон." },
-    { t: "2-ай", h: "GPS пен камера", d: "Мекеменің GPS жүйесіне API арқылы қосылу; 2 көлікте камера-сканер." },
-    { t: "3-ай", h: "Арналарды біріктіру", d: "eGov «Таза Қазақстан», TazaQazBot және 109 шағымдары бір кезекке." },
-    { t: "4–6-ай", h: "Бүкіл қала", d: "Барлық бригада мен аудан, көгалдандыру мердігерлері, әкімдікке апталық есеп." },
-  ];
+  const city = useCityConf();
+  const almaty = city.id === "almaty";
+  const steps = almaty
+    ? [
+        { t: "1-ай", h: "Пилот: Алмалы ауданы", d: "2 бригада, 1 оператор. Жабдық керек емес — тек телефон." },
+        { t: "2-ай", h: "GPS интеграциясы", d: "Қоқыс шығаратын ұйымдардың GPS платформасына API арқылы қосылу — көліктер онсыз да GPS-те." },
+        { t: "3-ай", h: "Арналарды біріктіру", d: "Open Almaty (109) және eOtinish шағымдары бір кезекке." },
+        { t: "4–6-ай", h: "8 аудан", d: "Барлық аудан мен мердігер ұйым, көгалдандыру, әкімдікке апталық есеп." },
+      ]
+    : [
+        { t: "1-ай", h: "Пилот: бір аудан", d: "2 бригада, 1 оператор. Жабдық керек емес — тек телефон." },
+        { t: "2-ай", h: "GPS пен камера", d: "Мекеменің GPS жүйесіне API арқылы қосылу; 2 көлікте камера-сканер." },
+        { t: "3-ай", h: "Арналарды біріктіру", d: "eGov «Таза Қазақстан», TazaQazBot және 109 шағымдары бір кезекке." },
+        { t: "4–6-ай", h: "Бүкіл қала", d: "Барлық бригада мен аудан, көгалдандыру мердігерлері, әкімдікке апталық есеп." },
+      ];
   return (
-    <Card title="Енгізу жоспары · «Қызылорда тазалығымен» пилот">
+    <Card title={almaty ? "Енгізу жоспары · Алматы" : "Енгізу жоспары · «Қызылорда тазалығымен» пилот"}>
       <ol className="space-y-3">
         {steps.map((s) => (
           <li key={s.t} className="flex gap-3">
@@ -505,7 +516,11 @@ function Rollout() {
           </div>
         ))}
       </div>
-      <div className="mt-3 text-[11px] leading-snug text-stone-500">Шығындар — шамамен, бұлттық қызметтердің ашық бағалары бойынша. Пилот туралы мекеменің қолдау хаты бар.</div>
+      <div className="mt-3 text-[11px] leading-snug text-stone-500">
+        {almaty
+          ? "Шығындар — шамамен, бұлттық қызметтердің ашық бағалары бойынша. Алматыда жүйе Қызылордадағы пилоттың нәтижесімен ұсынылады."
+          : "Шығындар — шамамен, бұлттық қызметтердің ашық бағалары бойынша. Пилот туралы мекеменің қолдау хаты бар."}
+      </div>
     </Card>
   );
 }

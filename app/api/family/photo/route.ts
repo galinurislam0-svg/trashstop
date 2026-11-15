@@ -1,8 +1,9 @@
 import { AuthError, requireRole } from "@/lib/auth";
 import { getFamilyPhoto } from "@/lib/store";
+import { withCity } from "@/lib/city-server";
 
 // Баланың тапсырма фотосы — тек өз ата-анасына
-export async function GET(req: Request) {
+async function GET_(req: Request) {
   let me;
   try {
     me = requireRole(req, ["citizen", "akimat"]);
@@ -15,3 +16,5 @@ export async function GET(req: Request) {
   if (!m) return new Response("Not found", { status: 404 });
   return new Response(Buffer.from(m[2], "base64"), { headers: { "Content-Type": m[1], "Cache-Control": "private, max-age=3600" } });
 }
+
+export const GET = withCity(GET_);

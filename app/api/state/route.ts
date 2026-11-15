@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { resetAll, sync } from "@/lib/store";
+import { resetAll, resetEveryCity, sync } from "@/lib/store";
 import { aiEnabled } from "@/lib/ai";
 import { getSession } from "@/lib/auth";
+import { withCity } from "@/lib/city-server";
 
-export async function GET(req: Request) {
+async function GET_(req: Request) {
   const s = await sync();
   const me = getSession(req);
   const canSeePlates = me?.role === "inspector" || me?.role === "akimat";
@@ -23,11 +24,16 @@ export async function GET(req: Request) {
   return NextResponse.json({ ...pub, reports, ai: aiEnabled() }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export async function DELETE(req: Request) {
+async function DELETE_(req: Request) {
   const token = process.env.ADMIN_TOKEN;
   const given = new URL(req.url).searchParams.get("token") ?? req.headers.get("x-admin-token");
   const me = getSession(req);
   if (me?.role !== "akimat" && (!token || given !== token)) return NextResponse.json({ error: "Рұқсат жоқ" }, { status: 403 });
-  await resetAll();
+  // ?city=all — барлық қаланың демо деректері; әйтпесе — тек таңдалған қала
+  if (new URL(req.url).searchParams.get("city") === "all") await resetEveryCity();
+  else await resetAll();
   return NextResponse.json({ ok: true });
 }
+
+export const GET = withCity(GET_);
+export const DELETE = withCity(DELETE_);

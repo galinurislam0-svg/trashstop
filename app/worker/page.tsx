@@ -30,6 +30,7 @@ import { Avatar, PhotoBox, Stars } from "@/components/ui";
 import { compressImage, getGeo, inCity, post, useCity } from "@/lib/client";
 import { CATEGORY, distanceM, isOverdue, timeLeft } from "@/lib/meta";
 import type { Category, Report, Verification } from "@/lib/types";
+import { CitySwitch } from "@/components/CitySwitch";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 
@@ -179,7 +180,10 @@ export default function WorkerPage() {
         <div className="frame-pad mx-auto max-w-md px-4 pb-10">
           <header className="in-frame-hide flex items-center justify-between gap-2 py-3">
             <Logo light sub="Тазалықшы" />
-            <UserChip light compact />
+            <span className="flex items-center gap-1.5">
+              <CitySwitch variant="light" compact />
+              <UserChip light compact />
+            </span>
           </header>
 
           {/* Сәлемдесу + бүгінгі қорытынды */}

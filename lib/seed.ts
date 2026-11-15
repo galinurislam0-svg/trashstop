@@ -1,12 +1,14 @@
 // ТЕСТІЛІК ДЕРЕКТЕР. Қызылорда көшелерінің атаулары нақты, бірақ шағымдар, адамдар мен ағаштар ойдан құрастырылған.
 import type { Brigade, Category, CityState, Report, Source, Tree, Worker } from "./types";
 import { CATEGORY } from "./meta";
-import REAL_ADDR from "./seed-addresses.json";
+import REAL_ADDR_KZO from "./seed-addresses.json";
+import REAL_ADDR_ALA from "./seed-addresses-almaty.json";
+import { CITIES, type CityId } from "./cities";
 import { DEMO_AFTER, DEMO_BEFORE } from "./demo-photos";
 
 // Тестілік нүктелердің нақты мекенжайлары (OpenStreetMap-тен алдын ала алынған). Кездейсоқ тізбек өзгермеуі үшін
 // fallback әрқашан есептеледі, тек нақтысы бар болса — сол қолданылады.
-const realOr = (id: string, fallback: string) => (REAL_ADDR as Record<string, string>)[id] ?? fallback;
+const realOr = (addr: Record<string, string>, id: string, fallback: string) => addr[id] ?? fallback;
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -19,29 +21,82 @@ function rng(seed: number) {
   };
 }
 
-export const DISTRICTS = [
-  { name: "Орталық", lat: 44.8495, lng: 65.5065, r: 0.006 },
-  { name: "Ескі базар маңы", lat: 44.8435, lng: 65.5155, r: 0.004 },
-  { name: "Ақмешіт", lat: 44.8605, lng: 65.4935, r: 0.006 },
-  { name: "Шұғыла", lat: 44.8575, lng: 65.5285, r: 0.006 },
-  { name: "Теміржол вокзалы", lat: 44.8395, lng: 65.4985, r: 0.005 },
-  { name: "Солтүстік өнеркәсіп аймағы", lat: 44.8705, lng: 65.5155, r: 0.007 },
-];
+type District = { name: string; lat: number; lng: number; r: number };
+type Zone = { name: string; lat: number; lng: number; auto: boolean };
 
-const STREETS = [
-  "Әйтеке би к-сі",
-  "Жібек жолы к-сі",
-  "Абай даңғылы",
-  "Қорқыт Ата к-сі",
-  "Тоқмағамбетов к-сі",
-  "Желтоқсан к-сі",
-  "Қайнарбаев к-сі",
-  "Сұлтан Бейбарыс к-сі",
-  "Әл-Фараби к-сі",
-  "Байтұрсынов к-сі",
-  "Қазыбек би к-сі",
-  "Мұратбаев к-сі",
-];
+/** Әр қаланың демо деректер баптауы: аудандар, көшелер, саябақтар, ағаш түрлері (тестілік, бірақ орындар — нақты) */
+const SEED: Record<CityId, {
+  seed: number; nReports: number; nTrees: number;
+  districts: District[]; brigadeDistricts: number; hotspot: number; hotspotReason: string;
+  streets: string[]; plates: string[]; species: string[]; contractors: string[];
+  zones: Zone[]; green: { lat: number; lng: number }; rapid: { lat: number; lng: number };
+  addr: Record<string, string>; treeSpread: number;
+}> = {
+  kyzylorda: {
+    seed: 20261113, nReports: 78, nTrees: 320,
+    districts: [
+      { name: "Орталық", lat: 44.8495, lng: 65.5065, r: 0.006 },
+      { name: "Ескі базар маңы", lat: 44.8435, lng: 65.5155, r: 0.004 },
+      { name: "Ақмешіт", lat: 44.8605, lng: 65.4935, r: 0.006 },
+      { name: "Шұғыла", lat: 44.8575, lng: 65.5285, r: 0.006 },
+      { name: "Теміржол вокзалы", lat: 44.8395, lng: 65.4985, r: 0.005 },
+      { name: "Солтүстік өнеркәсіп аймағы", lat: 44.8705, lng: 65.5155, r: 0.007 },
+    ],
+    brigadeDistricts: 6, hotspot: 1, hotspotReason: "Жиі қайталанатын ошақ (ескі базар)",
+    streets: ["Әйтеке би к-сі", "Жібек жолы к-сі", "Абай даңғылы", "Қорқыт Ата к-сі", "Тоқмағамбетов к-сі", "Желтоқсан к-сі", "Қайнарбаев к-сі", "Сұлтан Бейбарыс к-сі", "Әл-Фараби к-сі", "Байтұрсынов к-сі", "Қазыбек би к-сі", "Мұратбаев к-сі"],
+    plates: ["123 ABC 11", "777 KZO 11", "456 BKA 11", "908 AAS 11", "315 NRT 11"],
+    species: ["Қарағаш", "Тал", "Үйеңкі", "Шаған", "Ақ акация", "Гледичия", "Айлант", "Терек"],
+    contractors: ["«Жасыл Сыр» ЖШС", "«Көгал Сервис» ЖШС", "«Арал Green» ЖШС"],
+    zones: [
+      { name: "Абай даңғылы аллеясы", lat: 44.8515, lng: 65.5035, auto: true },
+      { name: "Орталық саябақ", lat: 44.8478, lng: 65.5112, auto: true },
+      { name: "Жібек жолы бойы", lat: 44.8555, lng: 65.5185, auto: false },
+      { name: "Ақмешіт скверi", lat: 44.8615, lng: 65.4955, auto: false },
+      { name: "Вокзал алаңы", lat: 44.8405, lng: 65.4995, auto: false },
+      { name: "Шұғыла жаңа көшеттері", lat: 44.8585, lng: 65.5305, auto: false },
+    ],
+    green: { lat: 44.852, lng: 65.512 }, rapid: { lat: 44.848, lng: 65.5 },
+    addr: REAL_ADDR_KZO as Record<string, string>, treeSpread: 1,
+  },
+  almaty: {
+    seed: 20261115, nReports: 104, nTrees: 420,
+    // Аудандардың тұрғын бөлігіндегі нүктелер (OpenStreetMap бойынша тексерілген)
+    districts: [
+      { name: "Алмалы", lat: 43.2518, lng: 76.9057, r: 0.009 },
+      { name: "Алатау", lat: 43.2931, lng: 76.8298, r: 0.011 },
+      { name: "Медеу", lat: 43.256, lng: 76.96, r: 0.009 },
+      { name: "Бостандық", lat: 43.223, lng: 76.922, r: 0.01 },
+      { name: "Әуезов", lat: 43.2247, lng: 76.8514, r: 0.01 },
+      { name: "Жетісу", lat: 43.292, lng: 76.93, r: 0.01 },
+      { name: "Түрксіб", lat: 43.33, lng: 76.96, r: 0.011 },
+      { name: "Наурызбай", lat: 43.205, lng: 76.8, r: 0.01 },
+    ],
+    brigadeDistricts: 6, hotspot: 1, hotspotReason: "Жиі қайталанатын ошақ (базар маңы)",
+    streets: ["Абай даңғылы", "Төле би к-сі", "Сәтбаев к-сі", "Жібек жолы к-сі", "Райымбек даңғылы", "Әл-Фараби даңғылы", "Сейфуллин даңғылы", "Байзақов к-сі", "Розыбакиев к-сі", "Жандосов к-сі", "Рысқұлов даңғылы", "Суюнбай даңғылы"],
+    plates: ["123 ABC 02", "777 ALM 02", "456 BKA 02", "908 AAS 02", "315 NRT 02"],
+    species: ["Қарағаш", "Терек", "Үйеңкі", "Жаңғақ", "Қайың", "Емен", "Шырша", "Қарағай", "Шаған"],
+    contractors: ["«Алатау Көгал» ЖШС", "«Тау Green» ЖШС", "«Мегаполис Жасыл» ЖШС"],
+    zones: [
+      { name: "Орталық саябақ", lat: 43.2617, lng: 76.9693, auto: true },
+      { name: "28 панфиловшылар саябағы", lat: 43.2588, lng: 76.9531, auto: true },
+      { name: "Бас ботаникалық бақ", lat: 43.2194, lng: 76.9145, auto: true },
+      { name: "Тұңғыш Президент саябағы", lat: 43.1945, lng: 76.8839, auto: true },
+      { name: "Есентай жағалауы", lat: 43.219, lng: 76.929, auto: false },
+      { name: "Арбат (Жібек жолы)", lat: 43.2617, lng: 76.9447, auto: false },
+      { name: "Терренкур", lat: 43.235, lng: 76.955, auto: false },
+      { name: "Абай даңғылы аллеясы", lat: 43.2405, lng: 76.92, auto: false },
+    ],
+    green: { lat: 43.26, lng: 76.9 }, rapid: { lat: 43.245, lng: 76.93 },
+    addr: REAL_ADDR_ALA as Record<string, string>, treeSpread: 1.3,
+  },
+};
+
+/** Қаланың аудандары (шағымды ең жақын ауданға жатқызу үшін) */
+export function districtsFor(city: CityId) {
+  return SEED[city].districts;
+}
+/** Үйлесімділік үшін: негізгі қаланың аудандары */
+export const DISTRICTS = SEED.kyzylorda.districts;
 
 const DESCRIPTIONS: Record<Category, string[]> = {
   household: [
@@ -58,7 +113,6 @@ const DESCRIPTIONS: Record<Category, string[]> = {
   burning: ["Көрші ауласында қоқыс өртеп жатыр, түтін үйге кіріп тұр", "Бос жерде құрғақ шөп пен қоқыс жағылып жатыр", "Кешке қарай шина мен пакет өртейді, иісі қатты"],
 };
 
-const PLATES = ["123 ABC 11", "777 KZO 11", "456 BKA 11", "908 AAS 11", "315 NRT 11"];
 
 const FIRST = [
   "Гүлжан", "Бақыт", "Сәуле", "Нұрлан", "Мәдина", "Ерлан", "Күләш", "Серік", "Райхан", "Жанат",
@@ -69,18 +123,22 @@ const FIRST = [
 const FEMALE = new Set(["Гүлжан", "Сәуле", "Мәдина", "Күләш", "Райхан", "Әлия", "Бибігүл", "Салтанат", "Роза", "Гүлназ", "Ақмарал", "Шолпан", "Мейрамгүл", "Зәуре", "Қаламқас", "Жұпар", "Күлпаш", "Ырысты", "Нәзира", "Перизат"]);
 const LAST = ["Әбенова", "Сейітов", "Құрманова", "Жұмабаев", "Әлиева", "Байменов", "Тоқтарова", "Исаев", "Нұрмаханова", "Омаров"];
 
-const SPECIES = ["Қарағаш", "Тал", "Үйеңкі", "Шаған", "Ақ акация", "Гледичия", "Айлант", "Терек"];
-const CONTRACTORS = ["«Жасыл Сыр» ЖШС", "«Көгал Сервис» ЖШС", "«Арал Green» ЖШС"];
 
-export function buildSeed(now = Date.now()): CityState {
-  const r = rng(20261113);
+export function buildSeed(now = Date.now(), city: CityId = "kyzylorda"): CityState {
+  const C = SEED[city];
+  const DISTRICTS = C.districts;
+  const STREETS = C.streets;
+  const PLATES = C.plates;
+  const SPECIES = C.species;
+  const CONTRACTORS = C.contractors;
+  const r = rng(C.seed);
   const pick = <T,>(a: T[]) => a[Math.floor(r() * a.length)];
-  const around = (d: (typeof DISTRICTS)[number]) => ({
+  const around = (d: District) => ({
     lat: d.lat + (r() - 0.5) * 2 * d.r,
     lng: d.lng + (r() - 0.5) * 2 * d.r * 1.4,
   });
 
-  const brigades: Brigade[] = DISTRICTS.map((d, i) => ({
+  const brigades: Brigade[] = DISTRICTS.slice(0, C.brigadeDistricts).map((d, i) => ({
     id: `b${i + 1}`,
     name: `${i + 1}-бригада`,
     district: d.name,
@@ -88,8 +146,11 @@ export function buildSeed(now = Date.now()): CityState {
     lng: d.lng,
     vehicle: i % 2 ? "Қоқыс тасушы КамАЗ" : "Шағын жүк көлігі",
   }));
-  brigades.push({ id: "b7", name: "7-бригада (көгалдандыру)", district: "Барлық аудан", lat: 44.852, lng: 65.512, vehicle: "Су тасушы көлік" });
-  brigades.push({ id: "b8", name: "8-бригада (жедел топ)", district: "Барлық аудан", lat: 44.848, lng: 65.5, vehicle: "Жедел топ көлігі" });
+  brigades.push({ id: "b7", name: "7-бригада (көгалдандыру)", district: "Барлық аудан", ...C.green, vehicle: "Су тасушы көлік" });
+  brigades.push({ id: "b8", name: "8-бригада (жедел топ)", district: "Барлық аудан", ...C.rapid, vehicle: "Жедел топ көлігі" });
+  // Бригадасы жоқ аудан (мысалы, Алматының шеткі аудандары) — ең жақын бригадаға
+  const nearestBrigade = (d: District) =>
+    brigades.slice(0, C.brigadeDistricts).reduce((best, b) => (Math.hypot(b.lat - d.lat, b.lng - d.lng) < Math.hypot(best.lat - d.lat, best.lng - d.lng) ? b : best));
 
   const workers: Worker[] = FIRST.map((f, i) => {
     const female = FEMALE.has(f);
@@ -114,12 +175,13 @@ export function buildSeed(now = Date.now()): CityState {
   const reports: Report[] = [];
   const sources: Source[] = ["egov", "bot", "109", "app", "app", "bot", "egov"];
   const H = 3600000;
-  for (let i = 0; i < 78; i++) {
-    // Ескі базар маңы — «ыстық нүкте»: шағымдардың үлкен бөлігі сонда
-    const d = i % 4 === 0 ? DISTRICTS[1] : pick(DISTRICTS);
+  const HOT = DISTRICTS[C.hotspot];
+  for (let i = 0; i < C.nReports; i++) {
+    // «Ыстық нүкте» (базар маңы): шағымдардың үлкен бөлігі сонда
+    const d = i % 4 === 0 ? HOT : pick(DISTRICTS);
     const cat0: Category = pick(["household", "household", "household", "bulky", "construction", "container", "container", "car", "tree"] as Category[]);
     // бірнеше тұрмыстық шағым — «қоқыс өртеу, түтін» (кездейсоқ тізбекті өзгертпейміз)
-    const cat: Category = cat0 === "household" && i % 6 === 1 && i < 70 ? "burning" : cat0;
+    const cat: Category = cat0 === "household" && i % 6 === 1 && i < C.nReports - 8 ? "burning" : cat0;
     const createdAt = now - Math.floor(r() * 7 * 24 * H);
     const age = now - createdAt;
     const sla = CATEGORY[cat].slaHours * H;
@@ -129,7 +191,7 @@ export function buildSeed(now = Date.now()): CityState {
     else if (age > 6 * H) status = roll < 0.45 ? "done" : roll < 0.7 ? "in_progress" : roll < 0.9 ? "assigned" : "new";
     else status = roll < 0.15 ? "done" : roll < 0.35 ? "assigned" : "new";
     const p = around(d);
-    const brigade = brigades.find((b) => b.district === d.name) ?? brigades[0];
+    const brigade = brigades.find((b) => b.district === d.name) ?? nearestBrigade(d);
     const bw = workers.filter((w) => w.brigadeId === brigade.id);
     const worker = status !== "new" ? pick(bw.length ? bw : workers) : null;
     const assignedAt = status !== "new" ? createdAt + Math.floor((0.2 + r() * 2) * H) : null;
@@ -138,18 +200,19 @@ export function buildSeed(now = Date.now()): CityState {
     const doneAt =
       status === "done" && assignedAt ? Math.min(now - 5 * 60000, assignedAt + Math.floor((lateRoll < 0.85 ? 0.2 + r() * 0.7 : 1.05 + r() * 0.5) * sla)) : null;
     const startedAt = status === "in_progress" || status === "done" ? (assignedAt ?? createdAt) + Math.floor(0.3 * H) : null;
-    const priority = (cat === "container" || cat === "car" || d === DISTRICTS[1] ? 3 : cat === "household" ? 2 : 1) as 1 | 2 | 3;
+    const priority = (cat === "container" || cat === "car" || d === HOT ? 3 : cat === "household" ? 2 : 1) as 1 | 2 | 3;
     const rep: Report = {
       id: `r${i + 1}`,
-      code: `TS-${1001 + i}`,
+      code: `TS-${CITIES[city].codeBase + 1 + i}`,
       createdAt,
       category: cat,
       status,
       priority,
-      priorityReason: d === DISTRICTS[1] ? "Жиі қайталанатын ошақ (ескі базар)" : cat === "container" ? "Санитарлық қауіп" : "Стандартты",
+      priorityReason: d === HOT ? C.hotspotReason : cat === "container" ? "Санитарлық қауіп" : "Стандартты",
       lat: p.lat,
       lng: p.lng,
-      address: realOr(`r${i + 1}`, `${pick(STREETS)}, ${1 + Math.floor(r() * 120)}`),
+      // Нақты мекенжай табылмаса: Қызылордада — көше (бұрынғыдай), басқа қалада — ауданның атауы (басқа ауданның көшесін жазбаймыз)
+      address: ((fb) => realOr(C.addr, `r${i + 1}`, city === "kyzylorda" ? fb : `${d.name} ауданы`))(`${pick(STREETS)}, ${1 + Math.floor(r() * 120)}`),
       district: d.name,
       description: pick(DESCRIPTIONS[cat]),
       source: pick(sources),
@@ -166,7 +229,7 @@ export function buildSeed(now = Date.now()): CityState {
         status === "done" ? { ok: true, distanceM: 8 + Math.floor(r() * 40), minutesAfterAssign: 40 + Math.floor(r() * 300), aiClean: true, reasons: [] } : null,
       rating: status === "done" && r() < 0.6 ? (r() < 0.75 ? 5 : 4) : null,
       thanks: null,
-      merged: d === DISTRICTS[1] && r() < 0.5 ? 1 + Math.floor(r() * 3) : 0,
+      merged: d === HOT && r() < 0.5 ? 1 + Math.floor(r() * 3) : 0,
       plate: cat === "car" ? pick(PLATES) : null,
       timeline: [],
     };
@@ -205,15 +268,8 @@ export function buildSeed(now = Date.now()): CityState {
   });
 
   const trees: Tree[] = [];
-  const zones = [
-    { name: "Абай даңғылы аллеясы", lat: 44.8515, lng: 65.5035, auto: true },
-    { name: "Орталық саябақ", lat: 44.8478, lng: 65.5112, auto: true },
-    { name: "Жібек жолы бойы", lat: 44.8555, lng: 65.5185, auto: false },
-    { name: "Ақмешіт скверi", lat: 44.8615, lng: 65.4955, auto: false },
-    { name: "Вокзал алаңы", lat: 44.8405, lng: 65.4995, auto: false },
-    { name: "Шұғыла жаңа көшеттері", lat: 44.8585, lng: 65.5305, auto: false },
-  ];
-  for (let i = 0; i < 320; i++) {
+  const zones = C.zones;
+  for (let i = 0; i < C.nTrees; i++) {
     const z = zones[i % zones.length];
     const planted = 2018 + Math.floor(r() * 9);
     const young = planted >= 2024;
@@ -221,8 +277,8 @@ export function buildSeed(now = Date.now()): CityState {
     const health = z.auto ? (hr < 0.82 ? "good" : hr < 0.95 ? "weak" : "dry") : young ? (hr < 0.48 ? "good" : hr < 0.75 ? "weak" : "dry") : hr < 0.7 ? "good" : hr < 0.9 ? "weak" : "dry";
     trees.push({
       id: `t${i + 1}`,
-      lat: z.lat + (r() - 0.5) * 0.0045,
-      lng: z.lng + (r() - 0.5) * 0.0065,
+      lat: z.lat + (r() - 0.5) * 0.0045 * C.treeSpread,
+      lng: z.lng + (r() - 0.5) * 0.0065 * C.treeSpread,
       species: pick(SPECIES),
       planted,
       health,

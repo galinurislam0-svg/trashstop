@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { AuthError, requireRole } from "@/lib/auth";
 import { rateLimited } from "@/lib/ratelimit";
 import { treeHealth } from "@/lib/ai";
+import { withCity } from "@/lib/city-server";
 
 export const maxDuration = 60;
 
-export async function POST(req: Request) {
+async function POST_(req: Request) {
   try {
     requireRole(req);
   } catch (e) {
@@ -21,3 +22,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
 }
+
+export const POST = withCity(POST_);

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { serverCityConf, withCity } from "@/lib/city-server";
 
-// Қызылорданың нақты ауа райы болжамы (Open-Meteo, кілтсіз). Интернет болмаса — тестілік болжам.
-export async function GET() {
+// Таңдалған қаланың нақты ауа райы болжамы (Open-Meteo, кілтсіз). Интернет болмаса — тестілік болжам.
+async function GET_() {
   try {
-    const url =
-      "https://api.open-meteo.com/v1/forecast?latitude=44.85&longitude=65.51&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&current=temperature_2m,wind_speed_10m&timezone=Asia%2FQyzylorda&forecast_days=7";
+    const w = serverCityConf().weather;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${w.lat}&longitude=${w.lng}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&current=temperature_2m,wind_speed_10m&timezone=Asia%2FAlmaty&forecast_days=7`;
     const res = await fetch(url, { next: { revalidate: 1800 }, signal: AbortSignal.timeout(6000) });
     if (!res.ok) throw new Error(String(res.status));
     const j = await res.json();
@@ -25,3 +26,5 @@ export async function GET() {
     return NextResponse.json({ live: false, current: 8, days });
   }
 }
+
+export const GET = withCity(GET_);
