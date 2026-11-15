@@ -176,8 +176,8 @@ export default function CitizenPage() {
       const next = [res.id, ...mine.filter((x) => x !== res.id)];
       setMine(next);
       saveMine(next);
-      setSent({ code: res.mergedInto ?? res.code, mergedInto: res.mergedInto });
       rememberTourCode(res.mergedInto ?? res.code);
+      setSent({ code: res.mergedInto ?? res.code, mergedInto: res.mergedInto });
       setStep("sent");
       refresh();
     } catch (e) {

@@ -31,6 +31,7 @@ export function rememberTourCode(code: string) {
   try {
     localStorage.setItem(`${TOUR_KEY}-code`, code);
   } catch {}
+  window.dispatchEvent(new Event("ts-tour-code"));
 }
 export function tourCode(): string | null {
   try {

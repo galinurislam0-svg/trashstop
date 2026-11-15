@@ -33,7 +33,12 @@ export function TourHint() {
   const [search, setSearch] = useState("");
   const [on, setOn] = useState(false);
   const [closed, setClosed] = useState<string | null>(null);
-  const [code, setCode] = useState<string | null>(null);
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const on = () => bump((n) => n + 1);
+    window.addEventListener("ts-tour-code", on);
+    return () => window.removeEventListener("ts-tour-code", on);
+  }, []);
 
   useEffect(() => {
     try {
@@ -41,17 +46,15 @@ export function TourHint() {
       setClosed(localStorage.getItem(`${TOUR_KEY}-hidden`));
     } catch {}
     // қойынды ауысқанда (мысалы, ?tab=mine) URL-дің іздеу бөлігі өзгереді
-    const tick = () => {
-      setSearch(location.search);
-      setCode(tourCode());
-    };
+    const tick = () => setSearch(location.search);
     tick();
     const id = setInterval(tick, 600);
     return () => clearInterval(id);
   }, [path]);
 
   if (me?.role !== "akimat" || !on) return null;
-  const h = hintFor(path, search, code);
+  // нөмірді әр рендерде тікелей оқимыз: шағым жіберілген сәтте сілтеме дайын болсын
+  const h = hintFor(path, search, tourCode());
   if (!h) return null;
   const key = `${path}${search.includes("tab=mine") ? "?mine" : ""}`;
   if (closed === key) return null;
