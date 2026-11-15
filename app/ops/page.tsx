@@ -114,16 +114,20 @@ export default function OpsPage() {
   const reports = state?.reports ?? [];
 
   // ?open=TS-1101 — шағымды бірден ашу (демо нұсқаушы, сілтемемен бөлісу)
+  // (жаңа шағым келесі жаңартуда ғана келуі мүмкін — табылғанша, бірақ 20 секундтан аспай күтеміз)
   const opened = useRef(false);
+  const openSince = useRef(0);
   useEffect(() => {
     if (!state || opened.current) return;
-    opened.current = true;
     const code = openParam();
-    const r = code ? state.reports.find((x) => x.code === code) : null;
+    if (!code) return void (opened.current = true);
+    openSince.current ||= Date.now();
+    const r = state.reports.find((x) => x.code === code);
     if (r) {
+      opened.current = true;
       setSelected(r.id);
       setFocus({ lat: r.lat, lng: r.lng, zoom: 16, key: Date.now() });
-    }
+    } else if (Date.now() - openSince.current > 20000) opened.current = true;
   }, [state]);
 
   // Жаңа сигнал келгенде — дыбыс, хабарлама, картаға ұшу
