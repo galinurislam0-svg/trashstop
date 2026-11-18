@@ -2,6 +2,7 @@
 // Қорғауға арналған «Демо жүргізуші» панелі: әкімдік аккаунтымен кіргенде бүкіл цикл ретімен бір басумен ашылады
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useMe } from "./UserChip";
 
 const STEPS = [
@@ -15,12 +16,34 @@ const STEPS = [
 export function DemoBar() {
   const me = useMe();
   const path = usePathname();
+  // Телефонда: төмен айналдырғанда жасырынады (мазмұнды жаппасын), жоғары айналдырғанда қайта шығады
+  const [hide, setHide] = useState(false);
+  useEffect(() => {
+    let last = window.scrollY;
+    let raf = 0;
+    const on = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const y = window.scrollY;
+        if (Math.abs(y - last) > 8) {
+          setHide(y > last && y > 80);
+          last = y;
+        }
+      });
+    };
+    window.addEventListener("scroll", on, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", on);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
   if (me?.role !== "akimat" || path === "/" || path === "/login" || path === "/qr") return null;
   return (
     // Телефонда: тек нөмірлер, төменгі мәзірлердің үстінде оң жақта — ештеңені жаппайды
     <nav
       aria-label="Демо қадамдары"
-      className="no-print fixed bottom-[calc(84px+env(safe-area-inset-bottom))] right-2 z-[60] flex max-w-[calc(100vw-16px)] items-center gap-0.5 overflow-x-auto rounded-full border border-white/15 bg-ink/95 p-1 shadow-2xl backdrop-blur [scrollbar-width:none] lg:bottom-3 lg:left-0 lg:right-0 lg:mx-auto lg:w-fit lg:gap-1"
+      className={`no-print fixed bottom-[calc(84px+env(safe-area-inset-bottom))] right-2 z-[60] flex transition-[transform,opacity] duration-300 ${hide ? "pointer-events-none translate-y-6 opacity-0 lg:pointer-events-auto lg:translate-y-0 lg:opacity-100" : ""} max-w-[calc(100vw-16px)] items-center gap-0.5 overflow-x-auto rounded-full border border-white/15 bg-ink/95 p-1 shadow-2xl backdrop-blur [scrollbar-width:none] lg:bottom-3 lg:left-0 lg:right-0 lg:mx-auto lg:w-fit lg:gap-1`}
     >
       <span className="mono shrink-0 px-1.5 text-[10px] uppercase tracking-wider text-mist lg:px-2.5">Демо</span>
       {STEPS.map((s, i) => {

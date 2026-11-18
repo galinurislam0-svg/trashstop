@@ -31,6 +31,7 @@ export interface Verification {
   distanceM: number;
   minutesAfterAssign: number;
   aiClean: boolean | null;
+  aiSamePlace?: boolean | null; // ЖИ: «кейін» фотосы шағымдағы жерде түсірілген бе
   reasons: string[];
 }
 

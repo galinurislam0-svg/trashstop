@@ -1,7 +1,6 @@
 "use client";
 // 🚛 Көлік — қала сканері: қоқыс көлігіндегі камера (жүргізушінің телефоны) көшені түсіреді,
 // ЖИ қоқысты тапса — GPS орны бойынша шағымды өзі ашады. Ешкім шағымданбаса да қала күн сайын тексеріледі.
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, CheckCircle2, ImagePlus, Loader2, Radio, ScanSearch, TriangleAlert, VideoOff } from "lucide-react";
@@ -13,7 +12,7 @@ import { CATEGORY } from "@/lib/meta";
 import type { AiResult } from "@/lib/types";
 import type { Vehicle } from "@/components/MapView";
 
-const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
+import MapView from "@/components/LazyMap";
 
 type Scan = {
   id: number;

@@ -83,10 +83,10 @@ const ROLES = [
 export default function Home() {
   const city = useCityConf();
   const almaty = city.id === "almaty";
-  const { state } = useCity(5000);
+  const { state } = useCity(5000, { trees: false });
   const root = useRef<HTMLDivElement>(null);
-  const [clock, setClock] = useState("");
   const [qr, setQr] = useState("");
+  const heroMap = useHeroMap();
   const [hover, setHover] = useState(0);
 
   // Бүгінгі «сыпырылған» үлес: соңғы 24 сағатта түскен сигналдардың қаншасы жабылды
@@ -109,11 +109,7 @@ export default function Home() {
   const pulse = useMemo(() => (state?.reports ?? []).filter((r) => r.status === "new").slice(0, 5).map((r) => ({ id: r.id, lat: r.lat, lng: r.lng, color: "#e2231a" })), [state]);
 
   useEffect(() => {
-    const tick = () => setClock(new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Qyzylorda" }));
-    tick();
-    const id = setInterval(tick, 1000);
     QRCode.toDataURL(`${location.origin}/citizen`, { margin: 0, width: 280, color: { dark: "#0e0e0d", light: "#f2f1ed" } }).then(setQr);
-    return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
@@ -122,9 +118,17 @@ export default function Home() {
     const el = root.current!;
     const sweep = { p: 0 };
     const label = el.querySelector<HTMLElement>("[data-pct]");
+    // --p айнымалысы бүкіл бетке емес, тек сыпыру сызығының ішіне жазылады:
+    // әйтпесе браузер әр кадрда 600+ элементтің стилін қайта есептейді (телефонда қатудың басты себебі еді)
+    const host = el.querySelector<HTMLElement>("[data-sweep-host]") ?? el;
+    let shown = -1;
     const apply = () => {
-      el.style.setProperty("--p", String(sweep.p));
-      if (label) label.textContent = `${Math.round(Math.min(1, Math.max(0, sweep.p)) * 100)}% сыпырылды`;
+      host.style.setProperty("--p", sweep.p.toFixed(4));
+      const pc = Math.round(Math.min(1, Math.max(0, sweep.p)) * 100);
+      if (label && pc !== shown) {
+        shown = pc;
+        label.textContent = `${pc}% сыпырылды`;
+      }
     };
     if (reduce) {
       sweep.p = ratioRef.current;
@@ -155,9 +159,12 @@ export default function Home() {
 
       // Idle: сызық баяу тыныс алады (тек жоғарыда тұрғанда)
       let t = 0;
+      const born = performance.now();
       const breathe = () => {
         t += gsap.ticker.deltaRatio() / 60;
-        if (intro.isActive() || window.scrollY > 4) return;
+        // 15 секундтан кейін тоқтаймыз: бос тұрған телефон бекер қызбасын
+        if (performance.now() - born > 15000) return void gsap.ticker.remove(breathe);
+        if (intro.isActive() || window.scrollY > 4 || document.hidden) return;
         sweep.p = ratioRef.current + Math.sin(t * 1.1) * 0.012;
         apply();
       };
@@ -202,7 +209,7 @@ export default function Home() {
   const pct = Math.round(ratio * 100);
 
   return (
-    <div ref={root} className="light-page" style={{ ["--p" as string]: "0" }}>
+    <div ref={root} className="light-page">
       <GovStrip />
       {/* Жабысқақ навигация: кез келген жерден рөлге бір басумен өту */}
       <div
@@ -230,9 +237,9 @@ export default function Home() {
         </div>
       </div>
       {/* ── HERO: ҚЫЗЫЛ → ТАЗА ── */}
-      <section data-hero className="relative h-dvh min-h-[620px] overflow-hidden bg-salt">
+      <section data-hero className="relative flex min-h-dvh flex-col overflow-hidden bg-salt md:block md:h-dvh md:min-h-[620px]">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-[0.55] [mask-image:linear-gradient(90deg,transparent_0%,#000_45%)]">
-          <MapView theme="mono" points={points} pulse={pulse} zoom={13.4} pitch={45} controls={false} interactive={false} />
+          {heroMap && <MapView theme="mono" points={points} pulse={pulse} zoom={13.4} pitch={45} controls={false} interactive={false} />}
         </div>
 
         <header className="relative z-10 flex items-start justify-between px-[var(--gutter)] pt-[var(--gutter)]">
@@ -264,10 +271,10 @@ export default function Home() {
           </Link>
         </header>
 
-        <div className="pointer-events-none absolute inset-x-0 top-[19vh] z-10 px-[var(--gutter)] md:top-[15vh]">
+        <div className="pointer-events-none relative z-10 mt-[7vh] px-[var(--gutter)] md:absolute md:inset-x-0 md:top-[15vh] md:mt-0">
           <h1 className="sr-only">{almaty ? "TrashSTOP: Алматыны таза қалаға айналдыратын жүйе" : "TrashSTOP: Қызылорданы қызылдан тазаға сыпыратын жүйе"}</h1>
-          <div aria-hidden="true" data-no-translate className="display select-none text-[29vw] leading-[0.84] md:text-[length:var(--t-mega)]">
-            <div data-hero-line className="relative w-fit">
+          <div aria-hidden="true" data-no-translate className="display select-none text-[25vw] leading-[0.84] md:text-[length:var(--t-mega)]">
+            <div data-hero-line data-sweep-host className="relative w-fit" style={{ ["--p" as string]: "0" }}>
               {/* қызыл қабат: сыпыру сызығынан оңға қарай қалады */}
               <span className="block text-qyzyl" style={{ clipPath: "inset(0 0 0 calc(var(--p) * 100%))" }}>
                 {almaty ? "Қоқыс" : "Қызыл"}
@@ -277,10 +284,12 @@ export default function Home() {
                 Таза
               </span>
               {/* сыпырғыш сызығы */}
-              <span className="absolute -bottom-[6%] -top-[6%] w-[3px] bg-ink" style={{ left: "calc(var(--p) * 100%)" }}>
+              <span className="absolute inset-y-0 left-0 w-full will-change-transform" style={{ transform: "translateX(calc(var(--p) * 100%))" }}>
+              <span className="absolute -bottom-[6%] -top-[6%] left-0 w-[3px] bg-ink">
                 <span data-pct className="mono absolute left-3 top-1 whitespace-nowrap bg-ink px-1.5 py-0.5 text-[11px] font-semibold tracking-normal text-salt normal-case">
                   {Math.round(Number(pct))}% сыпырылды
                 </span>
+              </span>
               </span>
             </div>
             <div data-hero-line className="-mt-[0.02em] text-ink" style={almaty ? { fontSize: "0.66em", marginTop: "0.04em" } : undefined}>
@@ -289,7 +298,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 z-10 grid grid-cols-12 items-end gap-[var(--gutter)] px-[var(--gutter)] pb-[calc(var(--gutter)+22px)]">
+        <div className="relative z-10 mt-auto grid grid-cols-12 items-end gap-x-[var(--gutter)] gap-y-4 px-[var(--gutter)] pb-[calc(var(--gutter)+22px)] pt-8 md:absolute md:inset-x-0 md:bottom-0 md:mt-0 md:gap-y-[var(--gutter)] md:pt-0">
           {/* Рөлдерге жылдам кіру — бірінші экранда */}
           <nav aria-label="Жүйеге кіру" data-corner className="col-span-12 -mb-1">
             <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
@@ -309,31 +318,33 @@ export default function Home() {
             Қаладағы әр қызыл нүкте шешілмеген сигнал. TrashSTOP оны тұрғынның фотосынан бастап тазалықшының дәлеліне дейін алып барады және
             жұмыс фотомен расталғанда ғана жабады.
           </p>
-          <div data-corner className="mono col-span-6 text-[12px] leading-relaxed text-muted md:col-span-3">
+          <div data-corner className="mono order-last col-span-12 text-[12px] leading-relaxed text-muted md:order-none md:col-span-3">
             {`${city.center[1].toFixed(2)}° N · ${city.center[0].toFixed(2)}° E`}
             <br />
-            {city.name} · <span className="text-ink">{clock}</span>
+            {city.name} · <Clock />
             <br />
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-qyzyl" /> тірі деректер (тестілік)
             </span>
           </div>
-          <div data-corner className="col-span-6 flex flex-col items-end gap-2 md:col-span-3">
+          <div data-corner className="col-span-12 flex flex-col items-stretch gap-2 md:col-span-3 md:items-end">
             <button
               type="button"
               onClick={() => startDemo()}
-              className="sweep-btn inline-flex items-center gap-3 rounded-full bg-qyzyl px-6 py-4 text-[15px] font-bold text-white shadow-lg"
+              className="sweep-btn inline-flex min-h-[56px] items-center justify-center gap-3 whitespace-nowrap rounded-full bg-qyzyl px-6 py-4 text-[15px] font-bold text-white shadow-lg"
               style={{ ["--sweep" as string]: "#0e0e0d" }}
             >
               ▶ Демоны бастау — тіркелусіз
             </button>
-            <span className="text-right text-[12px] text-muted">3 минут · 5 қадам · нұсқаушымен</span>
-            <Link href="/citizen" className="sweep-line inline-flex items-center gap-1.5 text-[13px] font-semibold">
-              Сигнал жіберу <ArrowRight size={14} />
-            </Link>
-            <Link href="/ops" className="sweep-line text-[13px] font-semibold">
-              Басқару орталығына өту
-            </Link>
+            <span className="text-center text-[12px] text-muted md:text-right">3 минут · 5 қадам · нұсқаушымен</span>
+            <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 md:flex-col md:items-end">
+              <Link href="/citizen" className="sweep-line inline-flex min-h-[40px] items-center gap-1.5 text-[14px] font-semibold md:min-h-0 md:text-[13px]">
+                Сигнал жіберу <ArrowRight size={14} />
+              </Link>
+              <Link href="/ops" className="sweep-line inline-flex min-h-[40px] items-center text-[14px] font-semibold md:min-h-0 md:text-[13px]">
+                Басқару орталығы
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -579,4 +590,40 @@ function AtGlance() {
       <p className="mt-4 text-[13px] text-muted">Деректер тестілік (белгіленген). Карта мен мекенжайлар нақты — OpenStreetMap. Демо деректер кез келген уақытта қалпына келтіріледі.</p>
     </section>
   );
+}
+
+/** Сағат: бөлек кішкентай компонент — әр секунд тек осы жол жаңарады, бүкіл бет емес */
+function Clock() {
+  const [t, setT] = useState("");
+  useEffect(() => {
+    const tick = () => setT(new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Qyzylorda" }));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="text-ink">{t}</span>;
+}
+
+/**
+ * Фондағы безендіру картасы: бет көрініп, браузер бос болғанда ғана жүктеледі (1 МБ кітапхана).
+ * Әлсіз телефонда (жады ≤ 2 ГБ, ядро ≤ 4, «трафикті үнемдеу») мүлде жүктелмейді — фон бос қалады.
+ */
+function useHeroMap() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const nav = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
+    const weak = (nav.deviceMemory ?? 8) <= 2 || (navigator.hardwareConcurrency ?? 8) <= 4 || nav.connection?.saveData === true;
+    if (weak) return;
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    let idle = 0;
+    const timer = setTimeout(() => {
+      if (w.requestIdleCallback) idle = w.requestIdleCallback(() => setOn(true), { timeout: 2500 });
+      else setOn(true);
+    }, 1200);
+    return () => {
+      clearTimeout(timer);
+      if (idle && w.cancelIdleCallback) w.cancelIdleCallback(idle);
+    };
+  }, []);
+  return on;
 }

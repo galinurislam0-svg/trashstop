@@ -36,7 +36,7 @@ export function GovStrip() {
         <a href="tel:109" aria-label={ru ? "Позвонить 109" : "109-ға қоңырау шалу"} className="ml-auto inline-flex h-10 items-center gap-1.5 px-1 font-semibold text-salt hover:underline sm:h-7">
           <Phone size={13} /> <span className="hidden min-[400px]:inline">109</span>
         </a>
-        <span className="h-4 w-px bg-white/20" />
+        <span className="h-4 w-px bg-white/20 max-[359px]:hidden" />
         <div className="flex items-center gap-0.5" role="group" aria-label={ru ? "Размер шрифта" : "Әріп өлшемі"}>
           {([0, 1, 2] as const).map((f) => (
             <button
@@ -44,7 +44,7 @@ export function GovStrip() {
               onClick={() => update({ fs: f })}
               aria-pressed={a.fs === f}
               aria-label={`${ru ? "Размер шрифта" : "Әріп өлшемі"} ${f + 1}`}
-              className={`flex h-10 min-w-9 items-center justify-center rounded px-1 font-bold sm:h-7 sm:min-w-7 sm:px-1.5 ${a.fs === f ? "bg-salt text-ink" : "text-stone-300 hover:bg-white/10"}`}
+              className={`flex h-10 min-w-9 items-center justify-center rounded px-1 font-bold max-[359px]:min-w-8 max-[359px]:px-0.5 sm:h-7 sm:min-w-7 sm:px-1.5 ${a.fs === f ? "bg-salt text-ink" : "text-stone-300 hover:bg-white/10"}`}
               style={{ fontSize: [12, 14, 16][f] }}
             >
               A{"+".repeat(f)}
@@ -58,7 +58,7 @@ export function GovStrip() {
         >
           {ru ? "Контраст" : "Контраст"}
         </button>
-        <span className="h-4 w-px bg-white/20" />
+        <span className="h-4 w-px bg-white/20 max-[359px]:hidden" />
         <div className="flex items-center gap-0.5" role="group" aria-label={ru ? "Язык" : "Тіл"}>
           {(
             [
@@ -66,7 +66,7 @@ export function GovStrip() {
               ["ru", "РУС"],
             ] as const
           ).map(([l, n]) => (
-            <button key={l} onClick={() => update({ lang: l })} aria-pressed={a.lang === l} className={`h-10 min-w-10 rounded px-1.5 font-bold sm:h-7 sm:min-w-0 sm:px-2 ${a.lang === l ? "bg-qyzyl text-white" : "text-stone-300 hover:bg-white/10"}`}>
+            <button key={l} onClick={() => update({ lang: l })} aria-pressed={a.lang === l} className={`h-10 min-w-10 rounded px-1.5 font-bold max-[359px]:min-w-9 max-[359px]:px-1 sm:h-7 sm:min-w-0 sm:px-2 ${a.lang === l ? "bg-qyzyl text-white" : "text-stone-300 hover:bg-white/10"}`}>
               {n}
             </button>
           ))}

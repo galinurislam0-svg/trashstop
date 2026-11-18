@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { resetAll, resetEveryCity, sync } from "@/lib/store";
 import { aiEnabled } from "@/lib/ai";
@@ -18,10 +19,17 @@ async function GET_(req: Request) {
     photo: r.photo ? (r.photo.startsWith("/demo/") ? r.photo : `/api/photo/${r.id}?k=before&v=${r.timeline.length}`) : null,
     afterPhoto: r.afterPhoto ? (r.afterPhoto.startsWith("/demo/") ? r.afterPhoto : `/api/photo/${r.id}?k=after&v=${r.timeline.length}`) : null,
   }));
-  const { users, families, ...pub } = s;
+  const { users, families, now, ...pub } = s;
   void users;
   void families; // отбасы деректері — тек ата-анаға, /api/family арқылы
-  return NextResponse.json({ ...pub, reports, ai: aiEnabled() }, { headers: { "Cache-Control": "no-store" } });
+  // ?trees=0 — ағаштар керек емес беттерге (тұрғын, тазалықшы, т.б.) жауап екі есе жеңіл
+  const withTrees = new URL(req.url).searchParams.get("trees") !== "0";
+  const body = JSON.stringify({ ...pub, trees: withTrees ? pub.trees : [], reports, ai: aiEnabled() });
+  // Мазмұн өзгермесе — 204: телефон JSON талдамайды, бетті қайта салмайды
+  const etag = createHash("sha1").update(body).digest("base64url").slice(0, 16);
+  const headers = { "Cache-Control": "no-store", "x-state-etag": etag };
+  if (req.headers.get("x-state-etag") === etag) return new NextResponse(null, { status: 204, headers });
+  return new NextResponse(`${body.slice(0, -1)},"now":${now}}`, { headers: { ...headers, "Content-Type": "application/json" } });
 }
 
 async function DELETE_(req: Request) {

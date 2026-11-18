@@ -368,7 +368,7 @@ async function verifyCleanRaw(before: string | null, after: string, lang: Lang =
       content.push({ type: "text", text: "«КЕЙІН» фотосы:" }, imageBlock(after));
       content.push({
         type: "text",
-        text: "Тазалықшы жұмысты бітірдім деп «кейін» фотосын жіберді. clean — кейінгі фотода қоқыс жоқ па? same_place — екі фото бір жерде түсірілген сияқты ма (дейін фото жоқ болса true)? comment — 1 сөйлем.",
+        text: "Тазалықшы жұмысты бітірдім деп «кейін» фотосын жіберді. clean — кейінгі фотода қоқыс жоқ па? same_place — екі фото бір жерде түсірілген бе (дейін фото жоқ болса true)? Бұрыш, қашықтық, жарық, жыл мезгілі өзгеруі — бәрібір бір жер. same_place=false тек анық басқа жер болса: басқа көше, басқа ғимараттар, мүлде басқа орта. comment — 1 сөйлем.",
       });
       return await parse(VerifySchema, [...content, ...langBlock(lang)]);
     } catch (e) {

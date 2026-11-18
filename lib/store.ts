@@ -248,13 +248,16 @@ export function act(id: string, body: Record<string, unknown>) {
     const lng = Number(body.lng);
     const dist = Number.isFinite(lat) && Number.isFinite(lng) ? distanceM(r, { lat, lng }) : 9999;
     const aiClean = typeof body.aiClean === "boolean" ? (body.aiClean as boolean) : null;
+    const aiSamePlace = typeof body.aiSamePlace === "boolean" ? (body.aiSamePlace as boolean) : null;
     const minutes = Math.round((now - (r.assignedAt ?? r.createdAt)) / 60000);
     const reasons: string[] = [];
     if (dist > 100) reasons.push(`Фото шағым орнынан ${dist >= 1000 ? (dist / 1000).toFixed(1).replace(".", ",") + " км" : dist + " м"} қашықта түсірілген`);
     if (aiClean === false) reasons.push("ЖИ: фотода қоқыс әлі көрініп тұр");
+    // GPS дұрыс болса да, басқа жердің (немесе интернеттен алынған) фотосымен жабуға болмайды
+    if (aiSamePlace === false) reasons.push("ЖИ: «кейін» фотосы шағымдағы жерде түсірілмеген сияқты");
     if (!body.photo) reasons.push("«Кейін» фотосы жоқ");
     const ok = reasons.length === 0;
-    r.verification = { ok, distanceM: dist, minutesAfterAssign: minutes, aiClean, reasons };
+    r.verification = { ok, distanceM: dist, minutesAfterAssign: minutes, aiClean, aiSamePlace, reasons };
     if (ok) {
       r.status = "done";
       r.doneAt = now;

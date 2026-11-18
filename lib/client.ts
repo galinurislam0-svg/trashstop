@@ -8,22 +8,58 @@ import type { Truck } from "./fleet";
 export type ClientState = CityState & { ai: boolean };
 
 /** Қала күйін 3 секунд сайын жаңартып отырады — барлық экран «тірі» */
-export function useCity(intervalMs = 3000) {
+export function useCity(intervalMs = 3000, opts: { trees?: boolean } = {}) {
   const [state, setState] = useState<ClientState | null>(null);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const etag = useRef<string | null>(null);
+  const lastSet = useRef(0);
+  const trees = opts.trees !== false;
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch("/api/state", { cache: "no-store" });
-      if (res.ok) setState(await res.json());
+      // Өзгеріс болмаса, сервер 204 қайтарады: JSON талдау да, бетті қайта салу да болмайды (телефонда тегіс жұмыс үшін)
+      const res = await fetch(trees ? "/api/state" : "/api/state?trees=0", {
+        cache: "no-store",
+        headers: etag.current ? { "x-state-etag": etag.current } : {},
+      });
+      if (res.status === 204) {
+        // Уақытқа байланысты жазулар («5 мин бұрын») қатып қалмауы үшін — 30 секундта бір рет тек уақытты жаңартамыз
+        if (Date.now() - lastSet.current > 30000) {
+          lastSet.current = Date.now();
+          setState((s) => (s ? { ...s, now: Date.now() } : s));
+        }
+        return;
+      }
+      if (res.ok) {
+        etag.current = res.headers.get("x-state-etag");
+        lastSet.current = Date.now();
+        setState(await res.json());
+      }
     } catch {
       /* желі үзілсе — келесі жолы */
     }
-  }, []);
+  }, [trees]);
   useEffect(() => {
     refresh();
-    timer.current = setInterval(refresh, intervalMs);
+    let id: ReturnType<typeof setInterval> | null = null;
+    // Бет көрінбей тұрғанда (басқа қосымша ашық) сұрамаймыз — батарея мен трафик үнемделеді
+    const start = () => {
+      if (id === null) id = setInterval(refresh, intervalMs);
+    };
+    const stop = () => {
+      if (id !== null) clearInterval(id);
+      id = null;
+    };
+    const onVis = () => {
+      if (document.hidden) stop();
+      else {
+        refresh();
+        start();
+      }
+    };
+    if (!document.hidden) start();
+    document.addEventListener("visibilitychange", onVis);
     return () => {
-      if (timer.current) clearInterval(timer.current);
+      stop();
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, [refresh, intervalMs]);
   return { state, refresh };

@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 // Тазалықшы: егде адамға арналған — бір экранда бір негізгі әрекет, ірі әріп, дауыспен оқу, қадамдар.
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -28,13 +27,13 @@ import { UserChip, useMe } from "@/components/UserChip";
 import { Logo } from "@/components/Logo";
 import { Avatar, PhotoBox, Stars } from "@/components/ui";
 import { compressImage, getGeo, inCity, post, useCity } from "@/lib/client";
-import { demoFile, openParam } from "@/lib/demo";
+import { demoAfterFor, demoFile, openParam } from "@/lib/demo";
 import { activeCity } from "@/lib/city-client";
 import { CATEGORY, distanceM, isOverdue, timeLeft } from "@/lib/meta";
 import type { Category, Report, Verification } from "@/lib/types";
 import { CitySwitch } from "@/components/CitySwitch";
 
-const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
+import MapView from "@/components/LazyMap";
 
 type GeoMode = "gps" | "onsite" | "away";
 
@@ -74,7 +73,7 @@ function speak(text: string) {
 
 
 export default function WorkerPage() {
-  const { state, refresh } = useCity(3000);
+  const { state, refresh } = useCity(3000, { trees: false });
   const [workerId, setWorkerId] = useState<string>("w1");
   const [pickOpen, setPickOpen] = useState(false);
   const [geoMode, setGeoMode] = useState<GeoMode>("onsite");
@@ -251,10 +250,14 @@ export default function WorkerPage() {
               busy={busyId === current.id}
               onStart={() => start(current)}
               onShoot={() => shoot(current)}
-              onDemo={async () => {
-                target.current = current;
-                await onPhoto(await demoFile("/demo/p23.jpg", "after.jpg"));
-              }}
+              onDemo={
+                demoAfterFor(current)
+                  ? async () => {
+                      target.current = current;
+                      await onPhoto(await demoFile(demoAfterFor(current)!, "after.jpg"));
+                    }
+                  : undefined
+              }
             />
           ) : (
             <section className="mt-5 rounded-[24px] bg-white p-8 text-center shadow-sm">
@@ -370,6 +373,7 @@ export default function WorkerPage() {
                   <div className="mt-4 space-y-2 text-left text-[15px]">
                     <Row ok={result.v.distanceM <= 100} text={`Орны: шағым нүктесінен ${fmtDist(result.v.distanceM)}`} />
                     <Row ok={result.v.aiClean !== false} text={result.v.aiClean === false ? "ЖИ: қоқыс әлі көрініп тұр" : "ЖИ: аумақ таза"} />
+                    {result.v.aiSamePlace === false && <Row ok={false} text="ЖИ: фото шағымдағы жерде түсірілмеген" />}
                     <Row ok text={`Уақыты: тағайындаудан кейін ${fmtMin(result.v.minutesAfterAssign)}`} />
                   </div>
                 )}
@@ -420,7 +424,7 @@ function CurrentTask({
   busy: boolean;
   onStart: () => void;
   onShoot: () => void;
-  onDemo: () => void;
+  onDemo?: () => void;
 }) {
   const over = isOverdue(r, now);
   const step = r.status === "assigned" ? 0 : 1; // 0: жолға шығу, 1: орында — фото
@@ -472,7 +476,7 @@ function CurrentTask({
 
         {/* шағын карта */}
         <div className="h-36 overflow-hidden rounded-[14px] border border-stone-200">
-          <MapView theme="light" points={[]} pin={{ lat: r.lat, lng: r.lng }} focus={{ lat: r.lat, lng: r.lng, zoom: 16, key: r.id }} zoom={16} controls={false} interactive={false} />
+          <MapView theme="light" points={[]} pin={{ lat: r.lat, lng: r.lng }} focus={{ lat: r.lat, lng: r.lng, zoom: 16, key: r.id }} zoom={16} controls={false} interactive={false} delay={1500} />
         </div>
 
         {/* бір негізгі әрекет */}
@@ -501,7 +505,7 @@ function CurrentTask({
             )}
           </button>
         )}
-        {step === 1 && !busy && (
+        {step === 1 && !busy && onDemo && (
           <button type="button" onClick={onDemo} className="w-full text-center text-[14px] font-bold text-ink underline decoration-dashed underline-offset-4">
             Фото жоқ па? Демо: таза жер фотосымен
           </button>

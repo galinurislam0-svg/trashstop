@@ -53,16 +53,19 @@ async function POST_(req: Request, ctx: { params: Promise<{ id: string }> }) {
       // ЖИ тексерісін сервер өзі жасайды: клиент жіберген «таза» белгісіне сенбейміз.
       // (Тазалықшының қосымшасы дәл осы фотоны жаңа ғана тексерген болса — нәтиже кэштен алынады, қайта сұрау болмайды.)
       let aiClean: boolean | null = null;
+      let aiSamePlace: boolean | null = null;
       if (typeof body.photo === "string" && body.photo.startsWith("data:image/")) {
         try {
           const v = await verifyClean(await getPhoto(id, "photo"), body.photo, req.headers.get("x-lang") === "ru" ? "ru" : "kk");
-          // Орынды GPS тексереді; ЖИ тек тазалықты бағалайды (бұрыш өзгерсе «басқа жер» деп қателеспеуі үшін)
+          // Орынды GPS тексереді, ал ЖИ тазалықты және фотоның сол жерде түсірілгенін бағалайды
+          // (GPS дұрыс болғанымен, басқа жердің суретін жіберу — жалған есептің ең оңай жолы)
           aiClean = v.demo ? null : v.clean;
+          aiSamePlace = v.demo ? null : v.same_place;
         } catch {
           aiClean = null; // ЖИ қолжетімсіз — геоорын мен фото бойынша ғана
         }
       }
-      payload = { ...payload, aiClean };
+      payload = { ...payload, aiClean, aiSamePlace };
     }
     const r = await mutate(() => act(id, payload));
     return NextResponse.json({ ok: true, status: r.status, verification: r.verification });

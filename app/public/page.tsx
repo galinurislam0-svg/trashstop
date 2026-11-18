@@ -1,9 +1,8 @@
 "use client";
 import { GovStrip } from "@/components/GovStrip";
 import { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
 
-const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
+import MapView from "@/components/LazyMap";
 import QRCode from "qrcode";
 import { Logo } from "@/components/Logo";
 import { CityFeed } from "@/components/CityFeed";
@@ -15,7 +14,7 @@ import { CATEGORY, isOverdue, timeAgo } from "@/lib/meta";
 
 export default function PublicPage() {
   const city = useCityConf();
-  const { state } = useCity(6000);
+  const { state } = useCity(6000, { trees: false });
   const [qr, setQr] = useState("");
   useEffect(() => {
     QRCode.toDataURL(`${location.origin}/citizen`, { margin: 1, width: 360, color: { dark: "#0f172a", light: "#ffffff" } }).then(setQr);

@@ -2,7 +2,7 @@
 // Қала картасы: OpenFreeMap (OpenStreetMap), 3D ғимараттар, қазақша атаулар, жерсерік, белгішелер, кластерлер,
 // 3D ошақ бағандары, бригада көліктері, автоматты айналу.
 import { useEffect, useRef, useState } from "react";
-import type { Map as MLMap, GeoJSONSource, Marker, Popup, StyleSpecification } from "maplibre-gl";
+import type { Map as MLMap, GeoJSONSource, MapLayerMouseEvent, Marker, Popup, StyleSpecification } from "maplibre-gl";
 import { activeCity } from "@/lib/city-client";
 
 export interface MapPoint {
@@ -283,7 +283,7 @@ export default function MapView({
       if (geolocate && interactive) {
         const geo = new maplibre.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, showUserLocation: true });
         m.addControl(geo, controlsPos);
-        geo.on("geolocate", (e: GeolocationPosition) => cb.current.onMapClick?.({ lat: e.coords.latitude, lng: e.coords.longitude }));
+        geo.on("geolocate", (e: { coords: { latitude: number; longitude: number } }) => cb.current.onMapClick?.({ lat: e.coords.latitude, lng: e.coords.longitude }));
       }
       // белгіше суреттері сұраныс бойынша жасалады: "ts-pin|<түс>|<эмодзи>"
       m.on("styleimagemissing", (e) => {
@@ -427,7 +427,7 @@ export default function MapView({
         });
 
         popup.current = new maplibre.Popup({ closeButton: false, closeOnClick: false, offset: 16, className: "ts-popup" });
-        const hover = (e: maplibregl.MapLayerMouseEvent) => {
+        const hover = (e: MapLayerMouseEvent) => {
           const f = e.features?.[0];
           m.getCanvas().style.cursor = "pointer";
           const label = f?.properties?.label as string;

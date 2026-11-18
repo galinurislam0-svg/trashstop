@@ -15,7 +15,7 @@ async function sha256(text: string) {
 }
 
 export default function InspectorPage() {
-  const { state, refresh } = useCity(3000);
+  const { state, refresh } = useCity(3000, { trees: false });
   // Көліктен тастау + қоқыс өртеу (екеуі де әкімшілік құқық бұзушылық)
   const cases = useMemo(() => (state?.reports ?? []).filter((r) => r.category === "car" || r.category === "burning"), [state]);
   // Бір жерде (80 м) 30 күнде қанша рет өртеді — қайталанатын бұзушылықтың дәлелі

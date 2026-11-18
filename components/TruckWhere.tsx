@@ -1,13 +1,12 @@
 "use client";
 // Тұрғынға: «Қоқыс көлігі қайда?» — ең жақын көлік қашан көшеңізге жетеді + хабарлама
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, BellRing, Loader2, MapPin, Radio, Truck } from "lucide-react";
 import { getGeoAcc, inCity, reverseGeocode, useFleet } from "@/lib/client";
 import type { Vehicle } from "./MapView";
 import { activeCity } from "@/lib/city-client";
 
-const MapView = dynamic(() => import("./MapView"), { ssr: false });
+import MapView from "./LazyMap";
 
 // Тұрғын қаладан тыс болса — демо нүкте (Әйтеке би көшесі маңы)
 const NOTIFY_MIN = 5;

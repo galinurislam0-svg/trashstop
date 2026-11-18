@@ -1,5 +1,4 @@
 "use client";
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Camera, MapPin, Sparkles, Send, CheckCircle2, ChevronRight, Award, Heart, Car, ImagePlus, X, Clock3, Loader2, Truck, Flame, Phone } from "lucide-react";
@@ -12,11 +11,11 @@ import { approxAddress, compressImage, getBestGeo, inCity, post, readExifGps, re
 import { CATEGORY, HAZARD, LEGAL_TERM, VOLUME, fmtTime, timeAgo } from "@/lib/meta";
 import { useCityConf } from "@/components/CityProvider";
 import { activeCity } from "@/lib/city-client";
-import { demoFile, rememberTourCode } from "@/lib/demo";
+import { demoFile, rememberDemoSrc, rememberTourCode } from "@/lib/demo";
 import type { AiResult, Category, Report } from "@/lib/types";
 import { CitySwitch } from "@/components/CitySwitch";
 
-const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
+import MapView from "@/components/LazyMap";
 
 type Step = "home" | "analyzing" | "review" | "sent";
 type LocInfo =
@@ -43,7 +42,7 @@ function saveMine(ids: string[]) {
 
 export default function CitizenPage() {
   const city = useCityConf();
-  const { state, refresh } = useCity(3000);
+  const { state, refresh } = useCity(3000, { trees: false });
   const [tab, setTab] = useState<"report" | "mine" | "truck" | "thanks">("report");
   const [step, setStep] = useState<Step>("home");
   const [mode, setMode] = useState<"trash" | "burning" | "car">("trash");
@@ -117,8 +116,11 @@ export default function CitizenPage() {
   );
   const points = myReports.length * 10 + myReports.filter((r) => r.status === "done").length * 15;
 
-  async function onFile(f: File | undefined, demo = false) {
+  // Демо фото қайдан алынды (кейін тазалықшыға сәйкес «кейін» фотосын беру үшін)
+  const demoSrc = useRef<string | null>(null);
+  async function onFile(f: File | undefined, demo: string | false = false) {
     if (!f) return;
+    demoSrc.current = demo || null;
     setErr(null);
     setStep("analyzing");
     try {
@@ -177,6 +179,7 @@ export default function CitizenPage() {
       setMine(next);
       saveMine(next);
       rememberTourCode(res.mergedInto ?? res.code);
+      if (demoSrc.current && !res.mergedInto) rememberDemoSrc(res.code, demoSrc.current);
       setSent({ code: res.mergedInto ?? res.code, mergedInto: res.mergedInto });
       setStep("sent");
       refresh();
@@ -247,7 +250,10 @@ export default function CitizenPage() {
 
                   <button
                     type="button"
-                    onClick={async () => onFile(await demoFile(mode === "burning" ? "/demo/p15.jpg" : mode === "car" ? "/demo/p09.jpg" : "/demo/p02.jpg"), true)}
+                    onClick={async () => {
+                      const src = mode === "burning" ? "/demo/p15.jpg" : mode === "car" ? "/demo/p09.jpg" : "/demo/p02.jpg";
+                      onFile(await demoFile(src), src);
+                    }}
                     className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-ink/25 bg-white px-4 text-[15px] font-bold text-ink transition hover:border-ink/60"
                   >
                     <ImagePlus size={18} /> Фото жоқ па? Демо фотомен байқау

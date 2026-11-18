@@ -50,10 +50,14 @@ export default function OpsPage() {
   const [playT, setPlayT] = useState<number | null>(null);
   const [present, setPresent] = useState(false);
   const [tick, setTick] = useState(0);
+  // Бригада көлігі жолда болғанда ғана (тағайындалғаннан кейін 4 минут) — 2 секундта бір жаңартамыз.
+  // Бұрын әр секунд бүкіл бет қайта салынатын, телефонда бұл қатуға әкелетін.
+  const moving = (state?.reports ?? []).some((r) => r.status === "assigned" && r.assignedAt && Date.now() - r.assignedAt < 240000);
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    if (!moving) return;
+    const id = setInterval(() => !document.hidden && setTick((t) => t + 1), 2000);
     return () => clearInterval(id);
-  }, []);
+  }, [moving]);
 
   // ⏱ Уақыт сызғышы: соңғы 7 күн 14 секундта ойнатылады
   function playWeek() {
