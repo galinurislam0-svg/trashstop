@@ -1,9 +1,13 @@
 // Демо (тестілік) фотолар: Wikimedia Commons, ашық лицензиялар. Авторлары /public бетінде көрсетіледі.
 export const DEMO_BEFORE: Record<string, string[]> = {"household": ["/demo/p00.jpg", "/demo/p01.jpg", "/demo/p02.jpg"], "container": ["/demo/p04.jpg", "/demo/p06.jpg"], "construction": ["/demo/p07.jpg", "/demo/p18.jpg"], "bulky": ["/demo/p19.jpg", "/demo/p07.jpg"], "car": ["/demo/p09.jpg", "/demo/p02.jpg"], "tree": ["/demo/p10.jpg", "/demo/p11.jpg"], "burning": ["/demo/p15.jpg", "/demo/p12.jpg", "/demo/p13.jpg", "/demo/p14.jpg"]};
 /** Демо «кейін» фотосы: сол «дейін» фотосының қоқыссыз бөлігі (бір жер — ЖИ «басқа жер» демеуі үшін) */
-export const DEMO_CLEAN: Record<string, string> = { "/demo/p02.jpg": "/demo/p02c.jpg", "/demo/p09.jpg": "/demo/p09c.jpg", "/demo/p15.jpg": "/demo/p15c.jpg" };
+// Нақты бір жердің екі түрлі фотосы (Albert Place, Тоттенхэм; Alan Stanton): «дейін» — қоқыс, «кейін» — тазартылған.
+// Бір фотоны қию жарамайды: ЖИ оны «кесілген нұсқа» деп танып, қабылдамайды (бұл да жалған есеп түрі).
+export const DEMO_CLEAN: Record<string, string> = { "/demo/p30.jpg": "/demo/p31.jpg" };
 export const DEMO_AFTER: string[] = ["/demo/p17.jpg", "/demo/p22.jpg", "/demo/p23.jpg", "/demo/p24.jpg"];
 export const DEMO_CREDITS: { file: string; title: string; author: string; license: string; url: string }[] = [
+ {"file": "/demo/p30.jpg", "title": "Albert Place garbage problem persists.jpg", "author": "Alan Stanton", "license": "CC BY-SA 2.0", "url": "https://commons.wikimedia.org/wiki/File:Albert_Place_garbage_problem_persists.jpg"},
+ {"file": "/demo/p31.jpg", "title": "Albert Place Improved - 23 November 2007.jpg", "author": "Alan Stanton", "license": "CC BY-SA 2.0", "url": "https://commons.wikimedia.org/wiki/File:Albert_Place_Improved_-_23_November_2007.jpg"},
  {
   "file": "/demo/p00.jpg",
   "title": "Garbage dumped by the road side in mbarara in western Uganda 02.jpg",

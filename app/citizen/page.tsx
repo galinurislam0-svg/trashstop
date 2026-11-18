@@ -251,7 +251,7 @@ export default function CitizenPage() {
                   <button
                     type="button"
                     onClick={async () => {
-                      const src = mode === "burning" ? "/demo/p15.jpg" : mode === "car" ? "/demo/p09.jpg" : "/demo/p02.jpg";
+                      const src = mode === "burning" ? "/demo/p15.jpg" : mode === "car" ? "/demo/p09.jpg" : "/demo/p30.jpg";
                       onFile(await demoFile(src), src);
                     }}
                     className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-ink/25 bg-white px-4 text-[15px] font-bold text-ink transition hover:border-ink/60"
